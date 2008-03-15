@@ -6,6 +6,7 @@ use HTML::Parser;
 
 my $parser = new MIME::Parser;
 
+$parser->output_to_core(1);
 $entity = $parser->parse(\*STDIN) or die "parse failed\n";
 
 # create a hash of html tag names that may have links
