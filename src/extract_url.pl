@@ -9,6 +9,7 @@ my $newlink = 1;
 sub foundurl {
 	my($uri,$orig) = @_;
 	$uri =~ s/mailto:(.*)/$1/;
+	$uri = sanitizeuri($uri);
 	if (! $link_hash{$uri}) {
 		$link_hash{$uri} = $newlink++;
 	}
@@ -16,6 +17,33 @@ sub foundurl {
 sub unfindurl {
 	my($uri) = @_;
 	delete($link_hash{$uri});
+}
+sub sanitizeuri {
+	my($uri) = @_;
+	my %encoding = (
+		#"!" => "%21",
+		#"*" => "%2A",
+		"'" => "%27",
+		#"(" => "%28",
+		#")" => "%29",
+		#";" => "%3B",
+		#":" => "%3A",
+		#"@" => "%40",
+		#"&" => "%26",
+		#"=" => "%3D",
+		#"+" => "%2B",
+		#"$" => "%24",
+		#"," => "%2C",
+		#"/" => "%2F",
+		#"?" => "%3F",
+		#"%" => "%25",
+		#"#" => "%23",
+		#"[" => "%5B",
+		#"]" => "%5D",
+	);
+	foreach $dangerchar (keys %encoding) {
+		$uri =~ s/$dangerchar/$encoding{$dangerchar}/g;
+	}
 }
 
 my $parser = new MIME::Parser;
@@ -65,7 +93,7 @@ sub extract_url_from_text {
 		my $finder = URI::Find::Schemeless->new(\&foundurl);
 		$finder->find(\$text);
 	} else {
-		$text =~ s{(((mms|ftp|http|https)://|news:)[^[:space:]]+[^](,.'">;[:space:]]|(mailto:)?[-a-zA-Z_0-9.+]+@[-a-zA-Z_0-9.]+)}{
+		$text =~ s{(((mms|ftp|http|https)://|news:)[][A-Za-z0-9_.~!*'();:@&=+$,/?%#-]+[^](,.'">;[:space:]]|(mailto:)?[-a-zA-Z_0-9.+]+@[-a-zA-Z_0-9.]+)}{
 			&foundurl($1,"");
 		}eg;
 	}
