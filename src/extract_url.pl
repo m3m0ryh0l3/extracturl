@@ -9,7 +9,6 @@ my $newlink = 1;
 sub foundurl {
 	my($uri,$orig) = @_;
 	$uri =~ s/mailto:(.*)/$1/;
-	$uri = sanitizeuri($uri);
 	if (! $link_hash{$uri}) {
 		$link_hash{$uri} = $newlink++;
 	}
@@ -21,29 +20,30 @@ sub unfindurl {
 sub sanitizeuri {
 	my($uri) = @_;
 	my %encoding = (
-		#"!" => "%21",
-		#"*" => "%2A",
-		"'" => "%27",
-		#"(" => "%28",
-		#")" => "%29",
-		#";" => "%3B",
-		#":" => "%3A",
-		#"@" => "%40",
-		#"&" => "%26",
-		#"=" => "%3D",
-		#"+" => "%2B",
-		#"$" => "%24",
-		#"," => "%2C",
-		#"/" => "%2F",
-		#"?" => "%3F",
-		#"%" => "%25",
-		#"#" => "%23",
-		#"[" => "%5B",
-		#"]" => "%5D",
+		#"\!" => "%21",
+		#"\*" => "%2A",
+		"\'" => "%27",
+		#"\(" => "%28",
+		#"\)" => "%29",
+		#"\;" => "%3B",
+		#"\:" => "%3A",
+		#"\@" => "%40",
+		#"\&" => "%26",
+		#"\=" => "%3D",
+		#"\+" => "%2B",
+		"\\\$" => "%24",
+		#"\," => "%2C",
+		#"\/" => "%2F",
+		#"\?" => "%3F",
+		#"\%" => "%25",
+		#"\#" => "%23",
+		#"\[" => "%5B",
+		#"\]" => "%5D",
 	);
 	foreach $dangerchar (keys %encoding) {
 		$uri =~ s/$dangerchar/$encoding{$dangerchar}/g;
 	}
+	return $uri;
 }
 
 my $parser = new MIME::Parser;
@@ -231,6 +231,7 @@ if ($fancymenu == 1) {
 
 	if ($shortcut == 1 && %link_hash == 1) {
 		my ($url) = each %link_hash;
+		$url = &sanitizeuri($url);
 		if ($urlviewcommand =~ m/%s/) {
 			$urlviewcommand =~ s/%s/'$url'/g;
 		} else {
@@ -250,7 +251,7 @@ if ($fancymenu == 1) {
 			if ($i > 0) { $output .= $subseq; }
 			my $breakpoint = -1;
 			my $chunk = substr($text,$i,$linelen);
-			my @chars = ("/","?","=","&","#");
+			my @chars = ("!","*","'","(",")",";",":","@","&","=","+",",","/","?","%","#","[","]");
 			foreach $chr ( @chars ) {
 				my $pt = rindex($chunk,$chr);
 				if ($breakpoint < $pt) { $breakpoint = $pt; }
@@ -338,7 +339,7 @@ if ($fancymenu == 1) {
 	$listbox->set_binding( 'option-last', "g");
 	$listbox->set_binding( 'option-first', "G");
 	sub madeselection {
-		my $url = $listhash{$listbox->get_active_value()};
+		my $url = &sanitizeuri($listhash{$listbox->get_active_value()});
 		my $command = $urlviewcommand;
 		if ($command =~ m/%s/) {
 			$command =~ s/%s/'$url'/g;
