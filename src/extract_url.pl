@@ -166,10 +166,10 @@ sub find_urls_rec
 								$body .= $line."\n";
 							}
 						}
-						extract_url_from_text($body);
+						&extract_url_from_text($body);
 					}
 					else {
-						extract_url_from_text($ent->bodyhandle->as_string);
+						&extract_url_from_text($ent->bodyhandle->as_string);
 					}
 				}
 			}
