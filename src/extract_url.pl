@@ -4,6 +4,20 @@ use MIME::Parser;
 use Switch;
 use HTML::Parser;
 
+my %link_hash;
+my $newlink = 1;
+sub foundurl {
+	my($uri,$orig) = @_;
+	$uri =~ s/mailto:(.*)/$1/;
+	if (! $link_hash{$uri}) {
+		$link_hash{$uri} = $newlink++;
+	}
+}
+sub unfindurl {
+	my($uri) = @_;
+	delete($link_hash{$uri});
+}
+
 my $parser = new MIME::Parser;
 
 $parser->output_to_core(1);
@@ -39,6 +53,24 @@ my %link_attr = (
 	'xmp'     => {'href'},
 );
 
+sub extract_url_from_text {
+	my($text) = @_;
+	# The idea here is to eliminate duplicate URLs - I want the
+	# %link_hash to be full of URLs. My regex (in the else statement)
+	# is decent, but imperfect. URI::Find is better.
+	my $fancyfind=1;
+	eval "use URI::Find::Schemeless";
+	$fancyfind=0 if ($@);
+	if ($fancyfind == 1) {
+		my $finder = URI::Find::Schemeless->new(\&foundurl);
+		$finder->find(\$text);
+	} else {
+		$text =~ s{(((mms|ftp|http|https)://|news:)[^[:space:]]+[^](,.'">;[:space:]]|(mailto:)?[-a-zA-Z_0-9.+]+@[-a-zA-Z_0-9.]+)}{
+			&foundurl($1,"");
+		}eg;
+	}
+}
+
 sub find_urls_rec
 {
 	my($ent) = @_;
@@ -61,7 +93,7 @@ sub find_urls_rec
 								next unless $v_offset; # 0 v_offset means no value
 								my $v = substr($text, $v_offset, $v_len);
 								$v =~ s/^([\'\"])(.*)\1$/$2/;
-								print "link: $v\n";
+								&foundurl($v,"");
 							}
 						}
 					},
@@ -74,6 +106,7 @@ sub find_urls_rec
 					case qr/format=flowed/ {
 						my @lines = $ent->bodyhandle->as_lines;
 						chomp(@lines);
+						my $body = "";
 						if ($ent->head->get('Content-type') =~ /delsp=yes/) {
 							#print "delsp=yes!\n";
 							$delsp=1;
@@ -88,7 +121,7 @@ sub find_urls_rec
 								$quotetext .= ">";
 								$col++;
 							}
-							if ($col > 0) { print "$quotetext "; }
+							if ($col > 0) { $body .= "$quotetext "; }
 							while ($lines[$i] =~ / $/ && $lines[$i] =~ /^$quotetext[^>]/ && $lines[$i+1] =~ /^$quotetext[^>]/) {
 								if ($delsp) {
 									$line = substr($lines[$i],$col,length($lines[$i])-$col-1);
@@ -96,19 +129,19 @@ sub find_urls_rec
 									$line = substr($lines[$i],$col);
 								}
 								$line =~ s/ *(.*)/$1/;
-								print $line;
+								$body .= $line;
 								$i++;
 							}
 							if ($lines[$i] =~ /^$quotetext[^>]/) {
 								$line = substr($lines[$i],$col);
 								$line =~ s/ *(.*)/$1/;
-								print $line."\n";
+								$body .= $line."\n";
 							}
 						}
+						extract_url_from_text($body);
 					}
 					else {
-						# urlview should be able to handle unflowed plain text
-						$ent->bodyhandle->print(\*STDOUT);
+						extract_url_from_text($ent->bodyhandle->as_string);
 					}
 				}
 			}
@@ -117,3 +150,195 @@ sub find_urls_rec
 }
 
 &find_urls_rec($entity);
+
+sub isOutputScreen {
+	use POSIX;
+	return 0 if POSIX::isatty( \*STDOUT) eq "" ; # pipe
+	return 1; # screen
+} # end of isOutputScreen
+
+my $fancymenu = 1;
+if (&isOutputScreen) {
+	eval "use Curses::UI";
+	$fancymenu = 0 if ($@);
+} else {
+	$fancymenu = 0;
+}
+
+if ($fancymenu == 1) {
+	#use strict;
+	# Curses support really REALLY wants to own STDIN
+	close(STDIN);
+	open(STDIN,"/dev/tty"); # looks like a hack, smells like a hack...
+
+	# find out the URLVIEW command
+	my $urlviewcommand="";
+	my $shortcut = 0; # means open it without checking if theres only 1 URL
+	my $noreview = 0; # means don't display overly-long URLs to be checked before opening
+	if (open(PREFFILE,'<',$ENV{'HOME'}."/.extract_urlview")) {
+		while (<PREFFILE>) {
+			if (/^SHORTCUT$/) {
+				$shortcut = 1;
+			} elsif (/^COMMAND (.*)/) {
+				$urlviewcommand=$1;
+				chomp $urlviewcommand;
+			} elsif (/^NOREVIEW$/) {
+				$noreview = 1;
+			}
+		}
+		close PREFFILE;
+	} elsif (open(URLVIEW,'<',$ENV{'HOME'}."/.urlview")) {
+		while (<URLVIEW>) {
+			if (/^COMMAND (.*)/) {
+				$urlviewcommand=$1;
+				chomp $urlviewcommand;
+				last;
+			}
+		}
+		close URLVIEW;
+	}
+	if ($urlviewcommand eq "") {
+		$urlviewcommand = "open";
+	}
+
+	if ($shortcut == 1 && %link_hash == 1) {
+		my ($url) = each %link_hash;
+		if ($urlviewcommand =~ m/%s/) {
+			$urlviewcommand =~ s/%s/'$url'/g;
+		} else {
+			$urlviewcommand .= " $url";
+		}
+		system $urlviewcommand;
+		exit 0;
+	}
+
+	sub urlwrap {
+		my($subseq,$text,$linelen,$breaker) = @_;
+		my $len = length($text);
+		my $i = 0;
+		my $output = "";
+		if (length($breaker) == 0) { $breaker = "\n"; }
+		while ($len > $linelen) {
+			if ($i > 0) { $output .= $subseq; }
+			my $breakpoint = -1;
+			my $chunk = substr($text,$i,$linelen);
+			my @chars = ("/","?","=","&","#");
+			foreach $chr ( @chars ) {
+				my $pt = rindex($chunk,$chr);
+				if ($breakpoint < $pt) { $breakpoint = $pt; }
+			}
+			if ($breakpoint == -1) { $breakpoint = $linelen; }
+			else { $breakpoint += 1; }
+			$output .= substr($text,$i,$breakpoint) . $breaker;
+			if ($i == 0) { $linelen -= length($subseq); }
+			$len -= $breakpoint;
+			$i += $breakpoint;
+		}
+		if ($i > 0) { $output .= $subseq; }
+		$output .= substr($text,$i);
+		return $output;
+	}
+
+	my $cui = new Curses::UI(
+		-color_support => 1,
+		-clear_on_exit => 1
+	);
+	my $wrapwidth = $cui->width() - 2;
+	my %listhash;
+	my @listvals;
+	foreach $url (sort {$link_hash{$a} <=> $link_hash{$b} } keys(%link_hash)) {
+		push(@listvals,$link_hash{$url});
+		$listhash{$link_hash{$url}} = $url;
+	}
+
+	my @menu = (
+		{ -label => 'Press q or Ctrl-C to quit! Press m to access menu.', 
+			-submenu => [
+			{ -label => 'About', -value => \&about },
+			{ -label => 'Show Command', -value => \&show_command },
+			{ -label => 'Exit      ^Q', -value => \&exit_dialog  }
+			],
+		},
+	);
+	my $menu = $cui->add(
+                'menu','Menubar', 
+                -menu => \@menu,
+        );
+	my $win1 = $cui->add(
+			'win1', 'Window',
+			-border => 1,
+			-y    => 1,
+			-bfg  => 'red',
+		);
+	sub about()
+	{
+		$cui->dialog(
+			-message => "The extract_url Program, version 1.0"
+		);
+	}
+	sub show_command()
+	{
+		# This extra sprintf work is to ensure that the title
+		# is fully displayed even if $urlviewcommand is short
+		my $title = "The configured URL viewing command is:";
+		my $len = length($title);
+		my $cmd = sprintf("%-${len}s",$urlviewcommand);
+		$cui->dialog(
+			-title => "The configured URL viewing command is:",
+			-message => $cmd,
+		);
+	}
+	sub exit_dialog()
+	{
+		my $return = $cui->dialog(
+			-message   => "Do you really want to quit?",
+			-buttons   => ['yes', 'no'],
+		);
+		exit(0) if $return;
+	}
+
+	my $listbox = $win1->add(
+		'mylistbox', 'Listbox',
+		-values    => \@listvals,
+		-labels    => \%listhash,
+		);
+	$cui->set_binding(sub {$menu->focus()}, "\cX");
+	$cui->set_binding(sub {$menu->focus()}, "m");
+	$cui->set_binding( sub{exit}, "q" );
+	$cui->set_binding( \&exit_dialog , "\cQ");
+	$cui->set_binding( sub{exit} , "\cc");
+	$listbox->set_binding( 'option-last', "g");
+	$listbox->set_binding( 'option-first', "G");
+	sub madeselection {
+		my $url = $listhash{$listbox->get_active_value()};
+		my $command = $urlviewcommand;
+		if ($command =~ m/%s/) {
+			$command =~ s/%s/'$url'/g;
+		} else {
+			$command .= " $url";
+		}
+		my $return = 1;
+		if ($noreview != 1 && length($url) > $cui->width()) {
+			$return = $cui->dialog(
+				-message => &urlwrap("  ",$url,$cui->width()-6),
+				-title => "Your Choice",
+				-buttons => ['ok', 'cancel'],
+			);
+		}
+		if ($return) {
+			system $command;
+			exit 0;
+		}
+	}
+	$cui->set_binding( \&madeselection, " ");
+	$listbox->set_routine('option-select',\&madeselection);
+
+	$listbox->focus();
+	$cui->mainloop();
+} else {
+	# using this as a pass-thru to URLVIEW
+	foreach my $value (sort {$link_hash{$a} <=> $link_hash{$b} } keys %link_hash)
+	{
+		print "$value\n";
+	}
+}
