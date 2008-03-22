@@ -229,7 +229,7 @@ if ($fancymenu == 1) {
 		$urlviewcommand = "open";
 	}
 
-	if ($shortcut == 1 && %link_hash == 1) {
+	if ($shortcut == 1 && 1 == scalar keys %link_hash) {
 		my ($url) = each %link_hash;
 		$url = &sanitizeuri($url);
 		if ($urlviewcommand =~ m/%s/) {
