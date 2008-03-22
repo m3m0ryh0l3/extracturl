@@ -347,7 +347,7 @@ if ($fancymenu == 1) {
 			$command .= " $url";
 		}
 		my $return = 1;
-		if ($noreview != 1 && length($url) > $cui->width()) {
+		if ($noreview != 1 && length($url) > ($cui->width()-2)) {
 			$return = $cui->dialog(
 				-message => &urlwrap("  ",$url,$cui->width()-6),
 				-title => "Your Choice",
