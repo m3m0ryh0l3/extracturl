@@ -203,6 +203,7 @@ if ($fancymenu == 1) {
 	my $urlviewcommand="";
 	my $shortcut = 0; # means open it without checking if theres only 1 URL
 	my $noreview = 0; # means don't display overly-long URLs to be checked before opening
+	my $persist  = 0; # means don't exit after viewing a URL (ignored if $shortcut == 0)
 	if (open(PREFFILE,'<',$ENV{'HOME'}."/.extract_urlview")) {
 		while (<PREFFILE>) {
 			if (/^SHORTCUT$/) {
@@ -212,6 +213,8 @@ if ($fancymenu == 1) {
 				chomp $urlviewcommand;
 			} elsif (/^NOREVIEW$/) {
 				$noreview = 1;
+			} elsif (/^PERSISTENT$/) {
+				$persist = 1;
 			}
 		}
 		close PREFFILE;
@@ -302,7 +305,7 @@ if ($fancymenu == 1) {
 	sub about()
 	{
 		$cui->dialog(
-			-message => "The extract_url Program, version 1.0"
+			-message => "The extract_url Program, version 1.1"
 		);
 	}
 	sub show_command()
@@ -356,7 +359,7 @@ if ($fancymenu == 1) {
 		}
 		if ($return) {
 			system $command;
-			exit 0;
+			exit 0 if ($persist == 0);
 		}
 	}
 	$cui->set_binding( \&madeselection, " ");
