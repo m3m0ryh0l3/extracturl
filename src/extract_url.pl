@@ -177,6 +177,33 @@ sub find_urls_rec
 	}
 }
 
+sub urlwrap {
+	my($subseq,$text,$linelen,$breaker) = @_;
+	my $len = length($text);
+	my $i = 0;
+	my $output = "";
+	if (length($breaker) == 0) { $breaker = "\n"; }
+	while ($len > $linelen) {
+		if ($i > 0) { $output .= $subseq; }
+		my $breakpoint = -1;
+		my $chunk = substr($text,$i,$linelen);
+		my @chars = ("!","*","'","(",")",";",":","@","&","=","+",",","/","?","%","#","[","]");
+		foreach $chr ( @chars ) {
+			my $pt = rindex($chunk,$chr);
+			if ($breakpoint < $pt) { $breakpoint = $pt; }
+		}
+		if ($breakpoint == -1) { $breakpoint = $linelen; }
+		else { $breakpoint += 1; }
+		$output .= substr($text,$i,$breakpoint) . $breaker;
+		if ($i == 0) { $linelen -= length($subseq); }
+		$len -= $breakpoint;
+		$i += $breakpoint;
+	}
+	if ($i > 0) { $output .= $subseq; }
+	$output .= substr($text,$i);
+	return $output;
+}
+
 &find_urls_rec($entity);
 
 sub isOutputScreen {
@@ -244,32 +271,6 @@ if ($fancymenu == 1) {
 		exit 0;
 	}
 
-	sub urlwrap {
-		my($subseq,$text,$linelen,$breaker) = @_;
-		my $len = length($text);
-		my $i = 0;
-		my $output = "";
-		if (length($breaker) == 0) { $breaker = "\n"; }
-		while ($len > $linelen) {
-			if ($i > 0) { $output .= $subseq; }
-			my $breakpoint = -1;
-			my $chunk = substr($text,$i,$linelen);
-			my @chars = ("!","*","'","(",")",";",":","@","&","=","+",",","/","?","%","#","[","]");
-			foreach $chr ( @chars ) {
-				my $pt = rindex($chunk,$chr);
-				if ($breakpoint < $pt) { $breakpoint = $pt; }
-			}
-			if ($breakpoint == -1) { $breakpoint = $linelen; }
-			else { $breakpoint += 1; }
-			$output .= substr($text,$i,$breakpoint) . $breaker;
-			if ($i == 0) { $linelen -= length($subseq); }
-			$len -= $breakpoint;
-			$i += $breakpoint;
-		}
-		if ($i > 0) { $output .= $subseq; }
-		$output .= substr($text,$i);
-		return $output;
-	}
 
 	my $cui = new Curses::UI(
 		-color_support => 1,
@@ -352,7 +353,7 @@ if ($fancymenu == 1) {
 		my $return = 1;
 		if ($noreview != 1 && length($url) > ($cui->width()-2)) {
 			$return = $cui->dialog(
-				-message => &urlwrap("  ",$url,$cui->width()-6),
+				-message => &urlwrap("  ",$url,$cui->width()-7),
 				-title => "Your Choice",
 				-buttons => ['ok', 'cancel'],
 			);
