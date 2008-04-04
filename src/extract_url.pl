@@ -187,7 +187,7 @@ sub urlwrap {
 		if ($i > 0) { $output .= $subseq; }
 		my $breakpoint = -1;
 		my $chunk = substr($text,$i,$linelen);
-		my @chars = ("!","*","'","(",")",";",":","@","&","=","+",",","/","?","%","#","[","]");
+		my @chars = ("!","*","'","(",")",";",":","@","&","=","+",",","/","?","%","#","[","]","-");
 		foreach $chr ( @chars ) {
 			my $pt = rindex($chunk,$chr);
 			if ($breakpoint < $pt) { $breakpoint = $pt; }
