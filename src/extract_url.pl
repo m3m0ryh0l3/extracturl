@@ -3,6 +3,15 @@
 use MIME::Parser;
 use Switch;
 use HTML::Parser;
+use Getopt::Std;
+
+my $version = 1.2;
+
+my %options;
+&getopts("lv",\%options);
+my $fancymenu = 1;
+if ($options{'l'}) { $fancymenu = 0; }
+if ($options{'v'}) { print "The extract_url Program, version $version\n"; exit; }
 
 my %link_hash;
 my $newlink = 1;
@@ -102,7 +111,7 @@ sub extract_url_from_text {
 sub find_urls_rec
 {
 	my($ent) = @_;
-	if ($ent->parts > 1) {
+	if ($ent->parts > 1 or $ent->mime_type eq "multipart/mixed") {
 		for ($i=0;$i<$ent->parts;$i++) {
 			find_urls_rec($ent->parts($i));
 		}
@@ -187,7 +196,7 @@ sub urlwrap {
 		if ($i > 0) { $output .= $subseq; }
 		my $breakpoint = -1;
 		my $chunk = substr($text,$i,$linelen);
-		my @chars = ("!","*","'","(",")",";",":","@","&","=","+",",","/","?","%","#","[","]","-");
+		my @chars = ("!","*","'","(",")",";",":","@","&","=","+",",","/","?","%","#","[","]","-","_");
 		foreach $chr ( @chars ) {
 			my $pt = rindex($chunk,$chr);
 			if ($breakpoint < $pt) { $breakpoint = $pt; }
@@ -212,7 +221,6 @@ sub isOutputScreen {
 	return 1; # screen
 } # end of isOutputScreen
 
-my $fancymenu = 1;
 if (&isOutputScreen) {
 	eval "use Curses::UI";
 	$fancymenu = 0 if ($@);
@@ -306,7 +314,7 @@ if ($fancymenu == 1) {
 	sub about()
 	{
 		$cui->dialog(
-			-message => "The extract_url Program, version 1.1"
+			-message => "The extract_url Program, version $version"
 		);
 	}
 	sub show_command()
@@ -353,7 +361,7 @@ if ($fancymenu == 1) {
 		my $return = 1;
 		if ($noreview != 1 && length($url) > ($cui->width()-2)) {
 			$return = $cui->dialog(
-				-message => &urlwrap("  ",$url,$cui->width()-7),
+				-message => &urlwrap("  ",$url,$cui->width()-8),
 				-title => "Your Choice",
 				-buttons => ['ok', 'cancel'],
 			);
