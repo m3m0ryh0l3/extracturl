@@ -237,6 +237,7 @@ sub find_urls_rec
 	} else {
 		#print "type: " . $ent->mime_type . "\n";
 		switch ($ent->mime_type) {
+			case "message/rfc822" { &find_urls_rec($ent->parts()); }
 			case "text/html" {
 				my $parser = HTML::Parser->new(api_version=>3);
 				$parser->handler(start => sub {
