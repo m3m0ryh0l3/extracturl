@@ -110,7 +110,35 @@ my $foundurl_text_text;
 sub foundurl_text {
 	my ($uri,$orig) = @_;
 	$foundurl_text_curindex = index($$foundurl_text_text, $orig, $foundurl_text_lastindex);
-	my $sincelast = &tidytext(substr($$foundurl_text_text,$foundurl_text_lastindex,($foundurl_text_curindex-$foundurl_text_lastindex)));
+	my $sincelast;
+	if ($foundurl_text_curindex >= 0) {
+		# this is the expected behavior
+		$sincelast = &tidytext(substr($$foundurl_text_text,$foundurl_text_lastindex,($foundurl_text_curindex-$foundurl_text_lastindex)));
+	} else {
+		# something odd is going on. What's happened is that our URL finder has
+		# found a URL that isn't in the text following the last URL it found.
+		# It *may* be doing things out of order... but that's really strange.
+		# We rely on it finding URLs in order of appearance in order to get
+		# context information. I'll try to recover but whatever happens, we
+		# can't get context information for this URL, and our context info for
+		# other URLs may be seriously messed up!
+		$foundurl_text_curindex = index($$foundurl_text_text, $orig);
+		if ($foundurl_text_curindex >= 0) {
+			# okay, we can recover... we'll just pretend that *everything* is
+			# the sincelast text
+			$sincelast = &tidytext(substr($$foundurl_text_text, 0, $foundurl_text_curindex));
+		} else {
+			# Very strange... I can't even find the URL! The best we can do is
+			# continue without *any* context... but there's *SERIOUS* weirdness
+			# going on, and expectations have been *majorly* violated. Let's
+			# just hope the URL is already closed (and so already has context
+			# information). I'm setting the curindex so that it'll be zero for
+			# the next URL (i.e. we can pretend that everything up to the next
+			# url is "sincelast")
+			$foundurl_text_curindex = 0 - length($orig);
+		}
+		$sincelast = "";
+	}
 	$sincelast =~ s/<$//;
 	$sincelast =~ s/^>//;
 	&foundurl($uri);
