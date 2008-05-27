@@ -5,7 +5,7 @@ use Switch;
 use HTML::Parser;
 use Getopt::Std;
 
-my $version = "1.3.1";
+my $version = "1.3.2";
 
 my %options;
 &getopts("lv",\%options);
