@@ -4,6 +4,8 @@ use MIME::Parser;
 use Switch;
 use HTML::Parser;
 use Getopt::Std;
+use strict;
+use warnings;
 
 my $version = "1.3.2";
 
@@ -15,32 +17,33 @@ if ($options{'v'}) { print "The extract_url Program, version $version\n"; exit; 
 
 # create a hash of html tag names that may have links
 my %link_attr = (
-	'a' => {'href'},
-	'applet' => {'archive','codebase','code'},
-	'area' => {'href'},
-	'blockquote' => {'cite'},
-	#'body'    => {'background'},
-	'embed'   => {'pluginspage', 'src'},
-	'form'    => {'action'},
-	'frame'   => {'src', 'longdesc'},
-	'iframe'  => {'src', 'longdesc'},
-	#'ilayer'  => {'background'},
-	#'img' => {'src'},
-	'input'   => {'src', 'usemap'},
-	'ins'     => {'cite'},
-	'isindex' => {'action'},
-	'head'    => {'profile'},
-	#'layer'   => {'background', 'src'},
-	'layer'   => {'src'},
-	'link'    => {'href'},
-	'object'  => {'classid', 'codebase', 'data', 'archive', 'usemap'},
-	'q'       => {'cite'},
-	'script'  => {'src', 'for'},
-	#'table'   => {'background'},
-	#'td'      => {'background'},
-	#'th'      => {'background'},
-	#'tr'      => {'background'},
-	'xmp'     => {'href'},
+	'a' => {'href'=>1},
+	'applet' => {'archive'=>1,'codebase'=>1,'code'=>1},
+	'area' => {'href'=>1},
+	'blockquote' => {'cite'=>1},
+	#'body'    => {'background'=>1},
+	'embed'   => {'pluginspage'=>1, 'src'=>1},
+	'form'    => {'action'=>1},
+	'frame'   => {'src'=>1, 'longdesc'=>1},
+	'iframe'  => {'src'=>1, 'longdesc'=>1},
+	#'ilayer'  => {'background'=>1},
+	#'img' => {'src'=>1},
+	'input'   => {'src'=>1, 'usemap'=>1},
+	'ins'     => {'cite'=>1},
+	'isindex' => {'action'=>1},
+	'head'    => {'profile'=>1},
+	#'layer'   => {'background'=>1, 'src'=>1},
+	'layer'   => {'src'=>1},
+	'link'    => {'href'=>1},
+	'object'  => {'classid'=>1, 'codebase'=>1, 'data'=>1, 'archive'=>1,
+		'usemap'=>1},
+	'q'       => {'cite'=>1},
+	'script'  => {'src'=>1, 'for'=>1},
+	#'table'   => {'background'=>1},
+	#'td'      => {'background'=>1},
+	#'th'      => {'background'=>1},
+	#'tr'      => {'background'=>1},
+	'xmp'     => {'href'=>1},
 );
 
 # find out the URLVIEW command
@@ -174,7 +177,7 @@ sub sanitizeuri {
 		#"\[" => "%5B",
 		#"\]" => "%5D",
 	);
-	foreach $dangerchar (keys %encoding) {
+	foreach my $dangerchar (keys %encoding) {
 		$uri =~ s/$dangerchar/$encoding{$dangerchar}/g;
 	}
 	return $uri;
@@ -242,11 +245,11 @@ sub tidytext
 		'&apos;' => "'",
 		'&lt;' => '<',
 		'&gt;' => '>',
-		'&([ACEINOUY])(grave|acute|circ|tilde|uml|ring|cedil);' => '\1',
+		'&([ACEINOUY])(grave|acute|circ|tilde|uml|ring|cedil);' => '$1',
 		'&amp;' => '&',
 		'\s\s+' => ' ',
 	);
-	foreach $entity (keys %rendermap) {
+	foreach my $entity (keys %rendermap) {
 		my $construct = '$text =~ s/$entity/'.$rendermap{$entity}.'/ig';
 		eval $construct;
 	}
@@ -259,7 +262,7 @@ sub find_urls_rec
 {
 	my($ent) = @_;
 	if ($ent->parts > 1 or $ent->mime_type eq "multipart/mixed") {
-		for ($i=0;$i<$ent->parts;$i++) {
+		for (my $i=0;$i<$ent->parts;$i++) {
 			find_urls_rec($ent->parts($i));
 		}
 	} else {
@@ -337,6 +340,7 @@ sub find_urls_rec
 						my @lines = $ent->bodyhandle->as_lines;
 						chomp(@lines);
 						my $body = "";
+						my $delsp;
 						if ($ent->head->get('Content-type') =~ /delsp=yes/) {
 							#print "delsp=yes!\n";
 							$delsp=1;
@@ -344,7 +348,7 @@ sub find_urls_rec
 							#print "delsp=no!\n";
 							$delsp=0;
 						}
-						for ($i=0;$i<@lines;$i++) {
+						for (my $i=0;$i<@lines;$i++) {
 							my $col = 0;
 							my $quotetext = "";
 							while (substr($lines[$i],$col,1) eq ">") {
@@ -353,6 +357,7 @@ sub find_urls_rec
 							}
 							if ($col > 0) { $body .= "$quotetext "; }
 							while ($lines[$i] =~ / $/ && $lines[$i] =~ /^$quotetext[^>]/ && $lines[$i+1] =~ /^$quotetext[^>]/) {
+								my $line;
 								if ($delsp) {
 									$line = substr($lines[$i],$col,length($lines[$i])-$col-1);
 								} else {
@@ -363,7 +368,7 @@ sub find_urls_rec
 								$i++;
 							}
 							if ($lines[$i] =~ /^$quotetext[^>]/) {
-								$line = substr($lines[$i],$col);
+								my $line = substr($lines[$i],$col);
 								$line =~ s/ *(.*)/$1/;
 								$body .= $line."\n";
 							}
@@ -390,7 +395,7 @@ sub urlwrap {
 		my $breakpoint = -1;
 		my $chunk = substr($text,$i,$linelen);
 		my @chars = ("!","*","'","(",")",";",":","@","&","=","+",",","/","?","%","#","[","]","-","_");
-		foreach $chr ( @chars ) {
+		foreach my $chr ( @chars ) {
 			my $pt = rindex($chunk,$chr);
 			if ($breakpoint < $pt) { $breakpoint = $pt; }
 		}
@@ -414,7 +419,7 @@ sub isOutputScreen {
 
 &getprefs();
 $parser->output_to_core(1);
-$entity = $parser->parse(\*STDIN) or die "parse failed\n";
+my $entity = $parser->parse(\*STDIN) or die "parse failed\n";
 &find_urls_rec($entity);
 
 if (&isOutputScreen) {
@@ -451,7 +456,7 @@ if ($fancymenu == 1) {
 	my $wrapwidth = $cui->width() - 2;
 	my %listhash;
 	my @listvals;
-	foreach $url (sort {$link_hash{$a} <=> $link_hash{$b} } keys(%link_hash)) {
+	foreach my $url (sort {$link_hash{$a} <=> $link_hash{$b} } keys(%link_hash)) {
 		push(@listvals,$link_hash{$url});
 		$listhash{$link_hash{$url}} = $url;
 	}
