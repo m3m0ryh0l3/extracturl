@@ -389,7 +389,6 @@ sub urlwrap {
 	my $len = length($text);
 	my $i = 0;
 	my $output = "";
-	if (length($breaker) == 0) { $breaker = "\n"; }
 	while ($len > $linelen) {
 		if ($i > 0) { $output .= $subseq; }
 		my $breakpoint = -1;
@@ -531,7 +530,7 @@ if ($fancymenu == 1) {
 		my $return = 1;
 		if ($noreview != 1 && length($url) > ($cui->width()-2)) {
 				$return = $cui->dialog(
-					-message => &urlwrap("  ",$url,$cui->width()-8),
+					-message => &urlwrap("  ",$url,$cui->width()-8,"\n"),
 					-title => "Your Choice:",
 					-buttons => ['ok', 'cancel'],
 				);
