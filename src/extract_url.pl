@@ -518,7 +518,8 @@ if ($fancymenu == 1) {
 	$cui->set_binding( sub{exit} , "\cc");
 	$listbox->set_binding( 'option-last', "G");
 	$listbox->set_binding( 'option-first', "g");
-	sub madeselection {
+	sub madeselection_sub {
+		my ($stayopen) = @_;
 		my $rawurl = $listhash{$listbox->get_active_value()};
 		my $url = &sanitizeuri($rawurl);
 		my $command = $urlviewcommand;
@@ -537,11 +538,16 @@ if ($fancymenu == 1) {
 		}
 		if ($return) {
 			system $command;
-			exit 0 if ($persist == 0);
+			if ($stayopen == 0) {
+				exit 0 if ($persist == 0);
+			}
 		}
 	}
+	sub madeselection { &madeselection_sub(0); }
+	sub noexit_madeselection { &madeselection_sub(1); }
 	$cui->set_binding( \&madeselection, " ");
 	$listbox->set_routine('option-select',\&madeselection);
+	$cui->set_binding( \&noexit_madeselection, "k");
 	use Text::Wrap;
 	sub contextual {
 		my $rawurl = $listhash{$listbox->get_active_value()};
