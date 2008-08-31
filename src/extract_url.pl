@@ -7,7 +7,7 @@ use Getopt::Std;
 use strict;
 use warnings;
 
-my $version = "1.3.2";
+my $version = "1.3.3";
 
 my %options;
 &getopts("lv",\%options);
