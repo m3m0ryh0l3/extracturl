@@ -261,7 +261,8 @@ sub tidytext
 sub find_urls_rec
 {
 	my($ent) = @_;
-	if ($ent->parts > 1 or $ent->mime_type eq "multipart/mixed") {
+	#print "type: " . $ent->mime_type . " ... parts: ".$ent->parts."\n";
+	if ($ent->parts >= 1 or $ent->mime_type eq "multipart/mixed") {
 		for (my $i=0;$i<$ent->parts;$i++) {
 			find_urls_rec($ent->parts($i));
 		}
