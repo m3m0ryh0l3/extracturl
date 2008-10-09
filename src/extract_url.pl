@@ -7,7 +7,7 @@ use Getopt::Std;
 use strict;
 use warnings;
 
-my $version = "1.3.3";
+my $version = "1.4";
 
 my %options;
 &getopts("lv",\%options);
@@ -52,11 +52,14 @@ my $shortcut = 0; # means open it without checking if theres only 1 URL
 my $noreview = 0; # means don't display overly-long URLs to be checked before opening
 my $persist  = 0; # means don't exit after viewing a URL (ignored if $shortcut == 0)
 my $ignore_empty = 0; # means to throw out URLs that don't have text in HTML
+my $alt_select_key = 'k';
 sub getprefs
 {
 	if (open(PREFFILE,'<',$ENV{'HOME'}."/.extract_urlview")) {
 		while (<PREFFILE>) {
 			switch ($_) {
+				case /^ALTSELECT [A-Za-fh-z0-9,.<>?;:{}|!@#$%^&*()_=+-`~]$/
+				{ $_ =~ /ALTSELECT \(.\)/; $alt_select_key = $1; }
 				case /^SHORTCUT$/          { $shortcut = 1; }
 				case /^NOREVIEW$/          { $noreview = 1; }
 				case /^PERSISTENT$/        { $persist = 1; }
@@ -541,14 +544,16 @@ if ($fancymenu == 1) {
 			system $command;
 			if ($stayopen == 0) {
 				exit 0 if ($persist == 0);
+			} else {
+				exit 0 unless ($persist == 0);
 			}
 		}
 	}
 	sub madeselection { &madeselection_sub(0); }
-	sub noexit_madeselection { &madeselection_sub(1); }
+	sub altexit_madeselection { &madeselection_sub(1); }
 	$cui->set_binding( \&madeselection, " ");
 	$listbox->set_routine('option-select',\&madeselection);
-	$cui->set_binding( \&noexit_madeselection, "k");
+	$cui->set_binding( \&altexit_madeselection, $alt_select_key);
 	use Text::Wrap;
 	sub contextual {
 		my $rawurl = $listhash{$listbox->get_active_value()};
