@@ -8,12 +8,23 @@ use strict;
 use warnings;
 
 my $version = "1.4";
+my $printversion = '';
+my $list = '';
 
 my %options;
-&getopts("lv",\%options);
+eval "use Getopt::Long";
+if ($@) {
+	print "using short options\n";
+	&getopt("lv",\%options);
+} else {
+	&GetOptions('version' => \$printversion, 'list' => \$list);
+}
 my $fancymenu = 1;
-if ($options{'l'}) { $fancymenu = 0; }
-if ($options{'v'}) { print "The extract_url Program, version $version\n"; exit; }
+if ($options{'l'} || length $list) { $fancymenu = 0; }
+if ($options{'v'} || length $printversion) {
+	print "The extract_url Program, version $version\n";
+	exit;
+}
 
 # create a hash of html tag names that may have links
 my %link_attr = (
@@ -422,6 +433,7 @@ sub isOutputScreen {
 
 &getprefs();
 $parser->output_to_core(1);
+die "no input provided!\n" if POSIX::isatty( \*STDIN) ne "" ; # pipe
 my $entity = $parser->parse(\*STDIN) or die "parse failed\n";
 &find_urls_rec($entity);
 
