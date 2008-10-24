@@ -7,7 +7,7 @@ use Getopt::Std;
 use strict;
 use warnings;
 
-my $version = "1.4";
+my $version = "1.4.1";
 my $printversion = '';
 my $list = '';
 
@@ -114,7 +114,7 @@ my %orig_text;
 my $newlink = 1;
 sub foundurl {
 	my($uri) = @_;
-	$uri =~ s/mailto:(.*)/$1/;
+	#$uri =~ s/mailto:(.*)/$1/;
 	if (! $link_hash{$uri}) {
 		$link_hash{$uri} = $newlink++;
 	}
@@ -248,8 +248,8 @@ sub tidytext
 {
 	my ($text) = @_;
 	my %rendermap = (
-		'[\n]' => '',
-		'[\r]' => '',
+		'[\n]' => ' ',
+		'[\r]' => ' ',
 		'&#[0-9]+;' => '',
 		'&#x[0-9a-f]+;' => '',
 		'&nbsp;' => ' ',
@@ -272,6 +272,34 @@ sub tidytext
 	return $text;
 }
 
+sub subwords
+{
+	my ($string, $minlen) = @_;
+	my @words = split(/\s+/, $string);
+	return "" if @words == 0;
+	my $retstr = $words[0];
+	my $wordcount = 1;
+	while (length($retstr) < $minlen && $wordcount < @words) {
+		$retstr .= " " . $words[$wordcount];
+		$wordcount++;
+	}
+	return $retstr;
+}
+
+sub sublastwords
+{
+	my ($string, $minlen) = @_;
+	my @words = split(/\s+/, $string);
+	return "" if @words == 0;
+	my $retstr = $words[@words-1];
+	my $wordcount = 1;
+	while (length($retstr) < $minlen && $wordcount < @words) {
+		$wordcount++;
+		$retstr = $words[@words - $wordcount] . " $retstr";
+	}
+	return $retstr;
+}
+
 sub find_urls_rec
 {
 	my($ent) = @_;
@@ -286,25 +314,33 @@ sub find_urls_rec
 			case "message/rfc822" { &find_urls_rec($ent->parts()); }
 			case "text/html" {
 				my $parser = HTML::Parser->new(api_version=>3);
+				my $skipped_text = "";
+				#$parser->unbroken_text(1);
 				$parser->handler(start => sub {
-						my($tagname,$pos,$text,$skipped) = @_;
+						my($tagname,$pos,$text) = @_;
 						if (my $link_attr = $link_attr{$tagname}) {
 							while (4 <= @$pos) {
 								my($k_offset, $k_len, $v_offset, $v_len) = splice(@$pos,-4);
 								my $attrname = lc(substr($text, $k_offset, $k_len));
 								next unless exists($link_attr->{$attrname});
 								next unless $v_offset; # 0 v_offset means no value
+
+								# This is REALLY hack-ish and fragile, but can
+								# sometimes be invaluable
+								&extract_url_from_text(\$skipped_text);
+
 								my $v = substr($text, $v_offset, $v_len);
 								$v =~ s/^([\'\"])(.*)\1$/$2/;
 								&foundurl($v);
 
-								$words_since_link_end .= " $skipped";
-								$last10words = &tidytext("$last10words $skipped");
-								$last10words = substr $last10words, -50;
+								$words_since_link_end .= " $skipped_text";
+								$last10words = &tidytext("$last10words $skipped_text");
+								$last10words = &sublastwords($last10words, 50);
+								$skipped_text = "";
 
 								$words_since_link_end = &tidytext($words_since_link_end);
 								if (length($seenurl) > 0 && ! exists($closedurls{$seenurl})) {
-									my $since_words = substr $words_since_link_end, 0, 30;
+									my $since_words = &subwords($words_since_link_end, 40);
 									if (length($since_words) > 0) {
 										my $space = " ";
 										$space = "" if ($since_words =~ /^[.,;!?)-]/);
@@ -313,21 +349,20 @@ sub find_urls_rec
 									$closedurls{$seenurl} = 1;
 								}
 
-								$beforetext = substr $last10words, -30;
+								$beforetext = &sublastwords($last10words, 30);
 								$seenstart = 1;
 								$seenurl = $v;
 							}
 						}
 					},
-					"tagname, tokenpos, text, skipped_text");
+					"tagname, tokenpos, text");
 				$parser->handler(end => sub {
 						my ($text) = @_;
-						$text = &tidytext($text);
-						$last10words = &tidytext("$last10words $text");
-						$last10words = substr $last10words, -50;
+						$last10words = &tidytext("$last10words $skipped_text");
+						$last10words = &sublastwords($last10words, 50);
 						if ($seenstart == 1) {
 							if (! exists($closedurls{$seenurl})) {
-								my $mtext = "=>$text<=";
+								my $mtext = "=>$skipped_text<=";
 								if (length($beforetext)) {
 									my $space = " ";
 									$space = "" if ($beforetext =~ /[(-]$/);
@@ -336,16 +371,24 @@ sub find_urls_rec
 									$orig_text{$seenurl} = "$mtext";
 								}
 							}
-							if (length($text) == 0 && $ignore_empty == 1 && ! exists($closedurls{$seenurl})) {
+							if (length($skipped_text) == 0 && $ignore_empty == 1 && ! exists($closedurls{$seenurl})) {
 								&unfindurl($seenurl);
 							}
 							$seenstart = 0;
-							$extendedskipped .= " $text";
+							$extendedskipped .= " $skipped_text";
 							$words_since_link_end = "";
 						} else {
-							$words_since_link_end .= " $text";
+							$words_since_link_end .= " $skipped_text";
 						}
-					},"skipped_text");
+						$skipped_text = "";
+					},"text");
+				# the "text" handler is used, rather than skipped_text because
+				# otherwise blocks of text at the beginning of a "lightly html-ified"
+				# document can be ignored.
+				$parser->handler(text => sub {
+						my ($text) = @_;
+						$skipped_text = &tidytext("$skipped_text $text");
+					}, "text");
 				$parser->parse($ent->bodyhandle->as_string);
 			}
 			case qr/text\/.*/ {
