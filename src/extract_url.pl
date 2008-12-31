@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 use MIME::Parser;
 use Switch;
@@ -231,7 +231,7 @@ sub extract_url_from_text {
 		my $finder = URI::Find::Schemeless->new(\&foundurl_text);
 		$finder->find($foundurl_text_text);
 	} else {
-		$$foundurl_text_text =~ s{(((mms|ftp|http|https)://|news:)[][A-Za-z0-9_.~!*'();:@&=+$,/?%#-]+[^](,.'">;[:space:]]|(mailto:)?[-a-zA-Z_0-9.+]+@[-a-zA-Z_0-9.]+)}{
+		$$foundurl_text_text =~ s{(((mms|ftp|http|https)://|news:)[][A-Za-z0-9_.~!*'();:@&=+,/?%#\$-]+[^](,.'">;[:space:]]|(mailto:)?[-a-zA-Z_0-9.+]+@[-a-zA-Z_0-9.]+)}{
 			&foundurl_text($1,$1);
 		}eg;
 	}
@@ -327,7 +327,7 @@ sub find_urls_rec
 
 								# This is REALLY hack-ish and fragile, but can
 								# sometimes be invaluable
-								&extract_url_from_text(\$skipped_text);
+								&extract_url_from_text(\$skipped_text) if (length($skipped_text) > 0);
 
 								my $v = substr($text, $v_offset, $v_len);
 								$v =~ s/^([\'\"])(.*)\1$/$2/;
