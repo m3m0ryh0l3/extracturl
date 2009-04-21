@@ -231,7 +231,7 @@ sub extract_url_from_text {
 		my $finder = URI::Find::Schemeless->new(\&foundurl_text);
 		$finder->find($foundurl_text_text);
 	} else {
-		$$foundurl_text_text =~ s{(((mms|ftp|http|https)://|news:)[][A-Za-z0-9_.~!*'();:@&=+,/?%#\$-]+[^](,.'">;[:space:]]|(mailto:)?[-a-zA-Z_0-9.+]+@[-a-zA-Z_0-9.]+)}{
+		$$foundurl_text_text =~ s{(((mms|ftp|http|https)://|news:)[][A-Za-z0-9_.~!*'();:@&=+,/?%#-]+[^](,.'">;[:space:]]|(mailto:)?[-a-zA-Z_0-9.+]+@[-a-zA-Z_0-9.]+)}{
 			&foundurl_text($1,$1);
 		}eg;
 	}
