@@ -7,7 +7,7 @@ use Getopt::Std;
 use strict;
 use warnings;
 
-my $version = "1.4.1";
+my $version = "1.5";
 my $printversion = '';
 my $list = '';
 
@@ -63,6 +63,7 @@ my $shortcut = 0; # means open it without checking if theres only 1 URL
 my $noreview = 0; # means don't display overly-long URLs to be checked before opening
 my $persist  = 0; # means don't exit after viewing a URL (ignored if $shortcut == 0)
 my $ignore_empty = 0; # means to throw out URLs that don't have text in HTML
+my $default_view = "url"; # means what shows up in the list by default: urls or contexts
 my $alt_select_key = 'k';
 sub getprefs
 {
@@ -79,6 +80,14 @@ sub getprefs
 					/^COMMAND (.*)/;
 					$urlviewcommand=$1;
 					chomp $urlviewcommand;
+				}
+				case /^DEFAULT_VIEW (.*)/ {
+					/^DEFAULT_VIEW (.*)/;
+					if ($1 =~ /^context$/) {
+						$default_view = "context";
+					} else {
+						$default_view = "url";
+					}
 				}
 				case /^HTML_TAGS (.*)/ {
 					/^HTML_TAGS (.*)/;
@@ -310,133 +319,129 @@ sub find_urls_rec
 		}
 	} else {
 		#print "type: " . $ent->mime_type . "\n";
-		switch ($ent->mime_type) {
-			case "message/rfc822" { &find_urls_rec($ent->parts()); }
-			case "text/html" {
-				my $parser = HTML::Parser->new(api_version=>3);
-				my $skipped_text = "";
-				#$parser->unbroken_text(1);
-				$parser->handler(start => sub {
-						my($tagname,$pos,$text) = @_;
-						if (my $link_attr = $link_attr{$tagname}) {
-							while (4 <= @$pos) {
-								my($k_offset, $k_len, $v_offset, $v_len) = splice(@$pos,-4);
-								my $attrname = lc(substr($text, $k_offset, $k_len));
-								next unless exists($link_attr->{$attrname});
-								next unless $v_offset; # 0 v_offset means no value
+		if ($ent->mime_type eq "message/rfc822") { &find_urls_rec($ent->parts()); }
+		elsif ($ent->mime_type eq "text/html" ) {
+			my $parser = HTML::Parser->new(api_version=>3);
+			my $skipped_text = "";
+			#$parser->unbroken_text(1);
+			$parser->handler(start => sub {
+					my($tagname,$pos,$text) = @_;
+					if (my $link_attr = $link_attr{$tagname}) {
+						while (4 <= @$pos) {
+							my($k_offset, $k_len, $v_offset, $v_len) = splice(@$pos,-4);
+							my $attrname = lc(substr($text, $k_offset, $k_len));
+							next unless exists($link_attr->{$attrname});
+							next unless $v_offset; # 0 v_offset means no value
 
-								# This is REALLY hack-ish and fragile, but can
-								# sometimes be invaluable
-								&extract_url_from_text(\$skipped_text) if (length($skipped_text) > 0);
+							# This is REALLY hack-ish and fragile, but can
+							# sometimes be invaluable
+							&extract_url_from_text(\$skipped_text) if (length($skipped_text) > 0);
 
-								my $v = substr($text, $v_offset, $v_len);
-								$v =~ s/^([\'\"])(.*)\1$/$2/;
-								&foundurl($v);
+							my $v = substr($text, $v_offset, $v_len);
+							$v =~ s/^([\'\"])(.*)\1$/$2/;
+							&foundurl($v);
 
-								$words_since_link_end .= " $skipped_text";
-								$last10words = &tidytext("$last10words $skipped_text");
-								$last10words = &sublastwords($last10words, 50);
-								$skipped_text = "";
-
-								$words_since_link_end = &tidytext($words_since_link_end);
-								if (length($seenurl) > 0 && ! exists($closedurls{$seenurl})) {
-									my $since_words = &subwords($words_since_link_end, 40);
-									if (length($since_words) > 0) {
-										my $space = " ";
-										$space = "" if ($since_words =~ /^[.,;!?)-]/);
-										$orig_text{$seenurl} .= "$space$since_words";
-									}
-									$closedurls{$seenurl} = 1;
-								}
-
-								$beforetext = &sublastwords($last10words, 30);
-								$seenstart = 1;
-								$seenurl = $v;
-							}
-						}
-					},
-					"tagname, tokenpos, text");
-				$parser->handler(end => sub {
-						my ($text) = @_;
-						$last10words = &tidytext("$last10words $skipped_text");
-						$last10words = &sublastwords($last10words, 50);
-						if ($seenstart == 1) {
-							if (! exists($closedurls{$seenurl})) {
-								my $mtext = "=>$skipped_text<=";
-								if (length($beforetext)) {
-									my $space = " ";
-									$space = "" if ($beforetext =~ /[(-]$/);
-									$orig_text{$seenurl} = "$beforetext$space$mtext";
-								} else {
-									$orig_text{$seenurl} = "$mtext";
-								}
-							}
-							if (length($skipped_text) == 0 && $ignore_empty == 1 && ! exists($closedurls{$seenurl})) {
-								&unfindurl($seenurl);
-							}
-							$seenstart = 0;
-							$extendedskipped .= " $skipped_text";
-							$words_since_link_end = "";
-						} else {
 							$words_since_link_end .= " $skipped_text";
-						}
-						$skipped_text = "";
-					},"text");
-				# the "text" handler is used, rather than skipped_text because
-				# otherwise blocks of text at the beginning of a "lightly html-ified"
-				# document can be ignored.
-				$parser->handler(text => sub {
-						my ($text) = @_;
-						$skipped_text = &tidytext("$skipped_text $text");
-					}, "text");
-				$parser->parse($ent->bodyhandle->as_string);
-			}
-			case qr/text\/.*/ {
-				$ent->head->unfold;
-				switch ($ent->head->get('Content-type')) {
-					case qr/format=flowed/ {
-						my @lines = $ent->bodyhandle->as_lines;
-						chomp(@lines);
-						my $body = "";
-						my $delsp;
-						if ($ent->head->get('Content-type') =~ /delsp=yes/) {
-							#print "delsp=yes!\n";
-							$delsp=1;
-						} else {
-							#print "delsp=no!\n";
-							$delsp=0;
-						}
-						for (my $i=0;$i<@lines;$i++) {
-							my $col = 0;
-							my $quotetext = "";
-							while (substr($lines[$i],$col,1) eq ">") {
-								$quotetext .= ">";
-								$col++;
-							}
-							if ($col > 0) { $body .= "$quotetext "; }
-							while ($lines[$i] =~ / $/ && $lines[$i] =~ /^$quotetext[^>]/ && $lines[$i+1] =~ /^$quotetext[^>]/) {
-								my $line;
-								if ($delsp) {
-									$line = substr($lines[$i],$col,length($lines[$i])-$col-1);
-								} else {
-									$line = substr($lines[$i],$col);
+							$last10words = &tidytext("$last10words $skipped_text");
+							$last10words = &sublastwords($last10words, 50);
+							$skipped_text = "";
+
+							$words_since_link_end = &tidytext($words_since_link_end);
+							if (length($seenurl) > 0 && ! exists($closedurls{$seenurl})) {
+								my $since_words = &subwords($words_since_link_end, 40);
+								if (length($since_words) > 0) {
+									my $space = " ";
+									$space = "" if ($since_words =~ /^[.,;!?)-]/);
+									$orig_text{$seenurl} .= "$space$since_words";
 								}
-								$line =~ s/ *(.*)/$1/;
-								$body .= $line;
-								$i++;
+								$closedurls{$seenurl} = 1;
 							}
-							if ($lines[$i] =~ /^$quotetext[^>]/) {
-								my $line = substr($lines[$i],$col);
-								$line =~ s/ *(.*)/$1/;
-								$body .= $line."\n";
+
+							$beforetext = &sublastwords($last10words, 30);
+							$seenstart = 1;
+							$seenurl = $v;
+						}
+					}
+				},
+				"tagname, tokenpos, text");
+			$parser->handler(end => sub {
+					my ($text) = @_;
+					$last10words = &tidytext("$last10words $skipped_text");
+					$last10words = &sublastwords($last10words, 50);
+					if ($seenstart == 1) {
+						if (! exists($closedurls{$seenurl})) {
+							my $mtext = "=>$skipped_text<=";
+							if (length($beforetext)) {
+								my $space = " ";
+								$space = "" if ($beforetext =~ /[(-]$/);
+								$orig_text{$seenurl} = "$beforetext$space$mtext";
+							} else {
+								$orig_text{$seenurl} = "$mtext";
 							}
 						}
-						&extract_url_from_text(\$body);
+						if (length($skipped_text) == 0 && $ignore_empty == 1 && ! exists($closedurls{$seenurl})) {
+							&unfindurl($seenurl);
+						}
+						$seenstart = 0;
+						$extendedskipped .= " $skipped_text";
+						$words_since_link_end = "";
+					} else {
+						$words_since_link_end .= " $skipped_text";
 					}
-					else {
-						&extract_url_from_text(\$ent->bodyhandle->as_string);
+					$skipped_text = "";
+				},"text");
+			# the "text" handler is used, rather than skipped_text because
+			# otherwise blocks of text at the beginning of a "lightly html-ified"
+			# document can be ignored.
+			$parser->handler(text => sub {
+					my ($text) = @_;
+					$skipped_text = &tidytext("$skipped_text $text");
+				}, "text");
+			$parser->parse($ent->bodyhandle->as_string);
+		} elsif ($ent->mime_type =~ /text\/.*/) {
+			$ent->head->unfold;
+			my $ctype = $ent->head->get('Content-type');
+			if ($ctype =~ m/format=flowed/) {
+				my @lines = $ent->bodyhandle->as_lines;
+				chomp(@lines);
+				my $body = "";
+				my $delsp;
+				if ($ctype =~ /delsp=yes/) {
+					#print "delsp=yes!\n";
+					$delsp=1;
+				} else {
+					#print "delsp=no!\n";
+					$delsp=0;
+				}
+				for (my $i=0;$i<@lines;$i++) {
+					my $col = 0;
+					my $quotetext = "";
+					print "=> " . $lines[$i] . "\n";
+					while (substr($lines[$i],$col,1) eq ">") {
+						$quotetext .= ">";
+						$col++;
+					}
+					if ($col > 0) { $body .= "$quotetext "; }
+					while ($lines[$i] =~ / $/ && $lines[$i] =~ /^$quotetext[^>]/ && $lines[$i+1] =~ /^$quotetext[^>]/) {
+						my $line;
+						if ($delsp) {
+							$line = substr($lines[$i],$col,length($lines[$i])-$col-1);
+						} else {
+							$line = substr($lines[$i],$col);
+						}
+						$line =~ s/^\s+//;
+						$body .= $line;
+						$i++;
+					}
+					if ($lines[$i] =~ /^$quotetext[^>]/) {
+						my $line = substr($lines[$i],$col);
+						$line =~ s/^\s+//;
+						$body .= $line."\n";
 					}
 				}
+				&extract_url_from_text(\$body);
+			} else {
+				&extract_url_from_text(\$ent->bodyhandle->as_string);
 			}
 		}
 	}
@@ -512,19 +517,23 @@ if ($fancymenu == 1) {
 		-clear_on_exit => 1
 	);
 	my $wrapwidth = $cui->width() - 2;
-	my %listhash;
+	my %listhash_url;
+	my %listhash_context;
 	my @listvals;
+	# $link_hash{url} = ordering of the urls in the document as first-seen
 	foreach my $url (sort {$link_hash{$a} <=> $link_hash{$b} } keys(%link_hash)) {
 		push(@listvals,$link_hash{$url});
-		$listhash{$link_hash{$url}} = $url;
+		$listhash_url{$link_hash{$url}} = $url;
+		$listhash_context{$link_hash{$url}} = $orig_text{$url};
 	}
 
 	my @menu = (
-		{ -label => 'Keys: q=quit m=menu c=context g=top G=bottom', 
+		{ -label => 'Keys: q=quit m=menu s=switch-view c=context g=top G=bottom', 
 			-submenu => [
-			{ -label => 'About', -value => \&about },
-			{ -label => 'Show Command', -value => \&show_command },
-			{ -label => 'Exit      ^Q', -value => \&exit_dialog  }
+			{ -label => 'About              a', -value => \&about },
+			{ -label => 'Show Command       C', -value => \&show_command },
+			{ -label => 'Switch List View   s', -value => \&switch_list },
+			{ -label => 'Exit              ^q', -value => \&exit_dialog  }
 			],
 		},
 	);
@@ -565,21 +574,41 @@ if ($fancymenu == 1) {
 		exit(0) if $return;
 	}
 
+	my $listbox_labels;
+	if ($default_view eq "url") {
+		$listbox_labels = \%listhash_url;
+	} else {
+		$listbox_labels = \%listhash_context;
+	}
 	my $listbox = $win1->add(
 		'mylistbox', 'Listbox',
 		-values    => \@listvals,
-		-labels    => \%listhash,
+		-labels    => $listbox_labels,
 		);
 	$cui->set_binding(sub {$menu->focus()}, "\cX");
 	$cui->set_binding(sub {$menu->focus()}, "m");
 	$cui->set_binding( sub{exit}, "q" );
 	$cui->set_binding( \&exit_dialog , "\cQ");
 	$cui->set_binding( sub{exit} , "\cc");
+	$cui->set_binding(\&switch_list, "s");
+	$cui->set_binding(\&about, "a");
+	$cui->set_binding(\&show_command, "C");
 	$listbox->set_binding( 'option-last', "G");
 	$listbox->set_binding( 'option-first', "g");
+	sub switch_list()
+	{
+		if ($listbox_labels == \%listhash_url) {
+			$listbox->labels(\%listhash_context);
+			$listbox_labels = \%listhash_context;
+		} elsif ($listbox_labels == \%listhash_context) {
+			$listbox->labels(\%listhash_url);
+			$listbox_labels = \%listhash_url;
+		}
+		$listbox->focus();
+	}
 	sub madeselection_sub {
 		my ($stayopen) = @_;
-		my $rawurl = $listhash{$listbox->get_active_value()};
+		my $rawurl = $listhash_url{$listbox->get_active_value()};
 		my $url = &sanitizeuri($rawurl);
 		my $command = $urlviewcommand;
 		if ($command =~ m/%s/) {
@@ -611,7 +640,7 @@ if ($fancymenu == 1) {
 	$cui->set_binding( \&altexit_madeselection, $alt_select_key);
 	use Text::Wrap;
 	sub contextual {
-		my $rawurl = $listhash{$listbox->get_active_value()};
+		my $rawurl = $listhash_url{$listbox->get_active_value()};
 		$Text::Wrap::columns = $cui->width()-8;
 		if (exists($orig_text{$rawurl}) && length($orig_text{$rawurl}) > 1) {
 			$cui->dialog(
