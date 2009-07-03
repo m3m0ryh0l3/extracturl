@@ -179,7 +179,7 @@ sub unfindurl {
 }
 sub sanitizeuri {
 	my($uri) = @_;
-	$uri =~ s/([^a-zA-Z0-9_.!*()-])/sprintf("%%%X",ord($1))/egs;
+	$uri =~ s/([^a-zA-Z0-9_.!*()@:=\?\/-])/sprintf("%%%X",ord($1))/egs;
 	return $uri;
 }
 
