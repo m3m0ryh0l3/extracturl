@@ -7,7 +7,7 @@ use Getopt::Std;
 use strict;
 use warnings;
 
-my $version = "1.5";
+my $version = "1.5.1b";
 my $printversion = '';
 my $list = '';
 
@@ -179,7 +179,7 @@ sub unfindurl {
 }
 sub sanitizeuri {
 	my($uri) = @_;
-	$uri =~ s/([^a-zA-Z0-9_.!*()@:=\?\/-])/sprintf("%%%X",ord($1))/egs;
+	$uri =~ s/([^a-zA-Z0-9_.!*()\@:=\?\/-])/sprintf("%%%X",ord($1))/egs;
 	return $uri;
 }
 
@@ -378,7 +378,7 @@ sub find_urls_rec
 		} elsif ($ent->mime_type =~ /text\/.*/) {
 			$ent->head->unfold;
 			my $ctype = $ent->head->get('Content-type');
-			if ($ctype =~ m/format=flowed/) {
+			if (defined($ctype) and $ctype =~ m/format=flowed/) {
 				my @lines = $ent->bodyhandle->as_lines;
 				chomp(@lines);
 				my $body = "";
