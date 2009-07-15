@@ -179,7 +179,7 @@ sub unfindurl {
 }
 sub sanitizeuri {
 	my($uri) = @_;
-	$uri =~ s/([^a-zA-Z0-9_.!*()\@:=\?\/-])/sprintf("%%%X",ord($1))/egs;
+	$uri =~ s/([^a-zA-Z0-9_.!*()\@:=\?&\/~-])/sprintf("%%%X",ord($1))/egs;
 	return $uri;
 }
 
@@ -393,7 +393,7 @@ sub find_urls_rec
 				for (my $i=0;$i<@lines;$i++) {
 					my $col = 0;
 					my $quotetext = "";
-					print "=> " . $lines[$i] . "\n";
+					#print "=> " . $lines[$i] . "\n";
 					while (substr($lines[$i],$col,1) eq ">") {
 						$quotetext .= ">";
 						$col++;
