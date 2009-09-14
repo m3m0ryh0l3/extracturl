@@ -7,7 +7,7 @@ use Getopt::Std;
 use strict;
 use warnings;
 
-my $version = "1.5.1b";
+my $version = "1.5.1";
 my $printversion = '';
 my $list = '';
 
@@ -122,7 +122,7 @@ my %link_hash;
 my %orig_text;
 my $newlink = 1;
 sub foundurl {
-	my($uri) = @_;
+	my ($uri) = @_;
 	#$uri =~ s/mailto:(.*)/$1/;
 	if (! $link_hash{$uri}) {
 		$link_hash{$uri} = $newlink++;
@@ -135,6 +135,7 @@ my $foundurl_text_text;
 
 sub foundurl_text {
 	my ($uri,$orig) = @_;
+	$uri = &render($uri);
 	$foundurl_text_curindex = index($$foundurl_text_text, $orig, $foundurl_text_lastindex);
 	my $sincelast;
 	if ($foundurl_text_curindex >= 0) {
@@ -177,9 +178,19 @@ sub unfindurl {
 	delete($link_hash{$uri});
 	delete($orig_text{$uri});
 }
+sub renderuri {
+	my($uri) = @_;
+	$uri =~ s/&amp;/&/gs;
+	$uri =~ s/%2[fF]/\//gs;
+	print "before: $uri\n";
+	$uri =~ s/%2[bB]/\+/gs;
+	print " after: $uri\n";
+	$uri =~ s/%3[dD]/=/gs;
+	return $uri;
+}
 sub sanitizeuri {
 	my($uri) = @_;
-	$uri =~ s/([^a-zA-Z0-9_.!*()\@:=\?&\/~-])/sprintf("%%%X",ord($1))/egs;
+	$uri =~ s/([^a-zA-Z0-9_.!*()\@&:=\?\/%~+-])/sprintf("%%%X",ord($1))/egs;
 	return $uri;
 }
 
@@ -316,6 +327,7 @@ sub find_urls_rec
 
 							my $v = substr($text, $v_offset, $v_len);
 							$v =~ s/^([\'\"])(.*)\1$/$2/;
+							$v = &renderuri($v);
 							&foundurl($v);
 
 							$words_since_link_end .= " $skipped_text";
@@ -594,9 +606,9 @@ if ($fancymenu == 1) {
 			$command .= " $url";
 		}
 		my $return = 1;
-		if ($noreview != 1 && length($url) > ($cui->width()-2)) {
+		if ($noreview != 1 && length($rawurl) > ($cui->width()-2)) {
 				$return = $cui->dialog(
-					-message => &urlwrap("  ",$url,$cui->width()-8,"\n"),
+					-message => &urlwrap("  ",$rawurl,$cui->width()-8,"\n"),
 					-title => "Your Choice:",
 					-buttons => ['ok', 'cancel'],
 				);
