@@ -135,7 +135,7 @@ my $foundurl_text_text;
 
 sub foundurl_text {
 	my ($uri,$orig) = @_;
-	$uri = &render($uri);
+	$uri = &renderuri($uri);
 	$foundurl_text_curindex = index($$foundurl_text_text, $orig, $foundurl_text_lastindex);
 	my $sincelast;
 	if ($foundurl_text_curindex >= 0) {
@@ -182,9 +182,7 @@ sub renderuri {
 	my($uri) = @_;
 	$uri =~ s/&amp;/&/gs;
 	$uri =~ s/%2[fF]/\//gs;
-	print "before: $uri\n";
 	$uri =~ s/%2[bB]/\+/gs;
-	print " after: $uri\n";
 	$uri =~ s/%3[dD]/=/gs;
 	return $uri;
 }
