@@ -181,9 +181,7 @@ sub unfindurl {
 sub renderuri {
 	my($uri) = @_;
 	$uri =~ s/&amp;/&/gs;
-	$uri =~ s/%2[fF]/\//gs;
-	$uri =~ s/%2[bB]/\+/gs;
-	$uri =~ s/%3[dD]/=/gs;
+	$uri =~ s/%([0-7][a-f0-9])/chr(hex($1))/egs;
 	return $uri;
 }
 sub sanitizeuri {
