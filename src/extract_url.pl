@@ -654,3 +654,191 @@ if ($fancymenu == 1) {
 		print "$value\n";
 	}
 }
+=head1 NAME
+
+B<extract_url.pl> -- extract URLs from email messages
+
+=head1 SYNOPSIS
+
+B<extract_url.pl> [B<-lv>] I<file>
+
+=head1 DESCRIPTION
+
+This is a Perl script that extracts URLs from correctly-encoded
+I<MIME> email messages. This can be used either as a pre-parser for
+I<urlview>, or to replace I<urlview> entirely.
+
+I<Urlview> is a great program, but has some deficiencies. In particular,
+it isn't particularly configurable, and cannot handle URLs that have
+been broken over several lines in I<format=flowed delsp=yes> email
+messages.  Nor can it handle I<quoted-printable> email messages. Also,
+I<urlview> doesn't eliminate duplicate URLs. This Perl script handles
+all of that.  It also sanitizes URLs so that they can't break out of the
+command shell.
+
+This is designed primarily for use with the I<mutt> emailer. The idea is
+that if you want to access a URL in an email, you pipe the email to a
+URL extractor (like this one) which then lets you select a URL to view
+in some third program (such as Firefox). An alternative design is to
+access URLs from within mutt's pager by defining macros and tagging the
+URLs in the display to indicate which macro to use. A script you can use
+to do that is I<tagurl.pl>.  
+
+=head1 DEPENDENCIES
+
+Mandatory dependencies are B<MIME::Parser> and B<HTML::Parser>.  These
+usually come with Perl. 
+
+Optional dependencies are B<URI::Find> (recognizes more exotic URL
+variations in plain text (without HTML tags)), B<Curses::UI> (allows it
+to fully replace I<urlview>), and B<Getopt::Long> (if present,
+B<extract_url.pl> recognizes long options --version and --list).
+
+=head1 USAGE
+
+This Perl script expects a valid email to be piped in via STDIN. Its
+STDOUT can be a pipe into I<urlview> (it will detect this). Here's how
+you can use it:
+
+    cat message.txt | extract_url.pl
+    cat message.txt | extract_url.pl | urlview
+
+For use with B<mutt 1.4.x>, here's a macro you can use:
+
+    macro index,pager \cb "\
+    <enter-command> \
+    unset pipe_decode<enter>\
+	<pipe-message>extract_url.pl<enter>" \
+    "get URLs"
+
+For use with B<mutt 1.5.x>, here's a more complicated macro you can use:
+
+    macro index,pager \cb "\
+    <enter-command> set my_pdsave=\$pipe_decode<enter>\
+    <enter-command> unset pipe_decode<enter>\
+    <pipe-message>extract_url.pl<enter>\
+    <enter-command> set pipe_decode=\$my_pdsave<enter>" \
+    "get URLs"
+
+Here's a suggestion for how to handle I<encrypted email>:
+
+    macro index,pager ,b "\
+    <enter-command> set my_pdsave=\$pipe_decode<enter>\
+    <enter-command> unset pipe_decode<enter>\
+    <pipe-message>extract_url.pl<enter>\
+    <enter-command> set pipe_decode=\$my_pdsave<enter>" \
+    "get URLs"
+
+    macro index,pager ,B "\
+    <enter-command> set my_pdsave=\$pipe_decode<enter>\
+    <enter-command> set pipe_decode<enter>\
+    <pipe-message>extract_url.pl<enter>\
+    <enter-command> set pipe_decode=\$my_pdsave<enter>" \
+    "decrypt message, then get URLs"
+
+    message-hook .  'macro index,pager \cb ,b "URL viewer"'
+    message-hook ~G 'macro index,pager \cb ,B "URL viewer"'
+
+=head1 CONFIGURATION
+
+If you're using it with B<Curses::UI> (i.e. as a standalone URL
+selector), this Perl script will try and figure out what command to use
+based on the contents of your F<~/.urlview> file. However, it also has
+its own configuration file (F<~/.extract_urlview>) that will be used
+instead, if it exists. So far, there are eight kinds of lines you can
+have in this file:
+
+=over 8
+
+=item COMMAND ...
+
+This line specifies the command that will be used to view URLs.  This
+command CAN contain a I<%s>, which will be replaced by the URL inside
+single-quotes. If it does not contain a I<%s>, the URL will simply be
+appended to the command. If this line is not present, the command is
+assumed to be "open", which is the correct command for MacOS X systems.
+
+=item SHORTCUT
+
+This line specifies that if an email contains only 1 URL, that URL will
+be opened without prompting. The default (without this line) is to
+always prompt.
+
+=item NOREVIEW
+
+Normally, if a URL is too long to display on screen in the menu, the
+user will be prompted with the full URL before opening it, just to make
+sure it's correct. This line turns that behavior off.
+
+=item PERSISTENT
+
+By default, when a URL has been selected and viewed from the menu,
+B<extract_url.pl> will exit. If you would like it to be ready to view
+another URL without re-parsing the email (i.e. much like standard
+I<urlview> behavior), add this line to the config file.
+
+=item IGNORE_EMPTY_TAGS
+
+By default, the script collects all the URLs it can find.  Sometimes,
+though, HTML messages contain links that don't correspond to any text
+(and aren't normally rendered or accessible). This tells the script to
+ignore these links.
+
+=item HTML_TAGS ...
+
+This line specifies which HTML tags will be examined for URLs. By
+default, the script is very generous, looking in I<a>, I<applet>,
+I<area>, I<blockquote>, I<embed>, I<form>, I<frame>, I<iframe>,
+I<input>, I<ins>, I<isindex>, I<head>, I<layer>, I<link>, I<object>,
+I<q>, I<script,> and I<xmp> tags for links. If you would like it to
+examine just a subset of these (e.g. you only want a tags to be
+examined), merely list the subset you want. The list is expected to be a
+comma-separated list. If there are multiple of these lines in the config
+file, the script will look for the minimum set of specified tags.
+
+=item ALTSELECT ...
+
+This line specifies a key for an alternate url viewing behavior.  By
+default, B<extract_url.pl> will quit after the URL viewer has been
+launched for the selected URL. This key will then make B<extract_url.pl>
+launch the URL viewer but will not quit. However, if I<PERSISTENT> is
+specified in the config file, the opposite is true: normal selection of
+a URL will launch the URL viewer and will not cause B<extract_url.pl> to
+exit, but this key will. This setting defaults to I<k>.
+
+=item DEFAULT_VIEW {url|context}
+
+This line specifies whether to show the list of URLs at first or to show
+the url contexts when the program is run. By default, B<extract_url.pl>
+shows a list of URLs.
+
+=back
+
+Here is an example config file:
+
+    SHORTCUT
+    COMMAND mozilla-firefox -remote "openURL(%s,new-window)"
+    HTML_TAGS a,iframe,link
+    ALTSELECT Q
+    DEFAULT_VIEW context
+
+=head1 SEE ALSO
+
+mutt(1), urlview(1), MIME::Parser(3), HTML::Parser(3), URI::Find(3),
+Curses::UI(3), Getopt::Long(3).
+
+=head1 CAVEATS
+
+All URLs have any potentially dangerous shell characters (namely a
+single quote and a dollar sign) removed (transformed into
+I<percent-encoding>) before they are used in a shell. This should
+eliminate the possibility of a bad URL breaking the shell.
+
+If using B<Curses::UI>, and a URL is too big for your terminal, when you
+select it, B<extract_url.pl> will (by default) ask you to review it in a
+way that you can see the whole thing. 
+
+=head1 AUTHOR
+
+Kyle Wheeler (kyle@memoryhole.net)
+
