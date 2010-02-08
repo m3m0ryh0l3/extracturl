@@ -7,7 +7,7 @@ use Getopt::Std;
 use strict;
 use warnings;
 
-my $version = "1.5.1";
+my $version = "1.5.2";
 my $printversion = '';
 my $list = '';
 
@@ -59,6 +59,7 @@ my %link_attr = (
 
 # find out the URLVIEW command
 my $urlviewcommand="";
+my $displaysanitized = 0; # means to display the pre-sanitized URL instead of the pretty one
 my $shortcut = 0; # means open it without checking if theres only 1 URL
 my $noreview = 0; # means don't display overly-long URLs to be checked before opening
 my $persist  = 0; # means don't exit after viewing a URL (ignored if $shortcut == 0)
@@ -75,6 +76,7 @@ sub getprefs
 				case /^SHORTCUT$/          { $shortcut = 1; }
 				case /^NOREVIEW$/          { $noreview = 1; }
 				case /^PERSISTENT$/        { $persist = 1; }
+				case /^DISPLAY_SANITIZED$/ { $displaysanitized = 1; }
 				case /^IGNORE_EMPTY_TAGS$/ { $ignore_empty = 1; }
 				case /^COMMAND (.*)/ {
 					/^COMMAND (.*)/;
@@ -508,7 +510,11 @@ if ($fancymenu == 1) {
 	# $link_hash{url} = ordering of the urls in the document as first-seen
 	foreach my $url (sort {$link_hash{$a} <=> $link_hash{$b} } keys(%link_hash)) {
 		push(@listvals,$link_hash{$url});
-		$listhash_url{$link_hash{$url}} = $url;
+		if ($displaysanitized) {
+			$listhash_url{$link_hash{$url}} = &sanitizeuri($url);
+		} else {
+			$listhash_url{$link_hash{$url}} = $url;
+		}
 		$listhash_context{$link_hash{$url}} = $orig_text{$url};
 	}
 
@@ -651,6 +657,7 @@ if ($fancymenu == 1) {
 	# using this as a pass-thru to URLVIEW
 	foreach my $value (sort {$link_hash{$a} <=> $link_hash{$b} } keys %link_hash)
 	{
+		$value = &sanitizeuri($value);
 		print "$value\n";
 	}
 }
