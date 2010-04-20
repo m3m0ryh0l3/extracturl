@@ -7,7 +7,7 @@ use Getopt::Std;
 use strict;
 use warnings;
 
-my $version = "1.5.2";
+my $version = "1.5.3";
 my $printversion = '';
 my $list = '';
 
