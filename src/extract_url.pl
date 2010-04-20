@@ -72,7 +72,7 @@ sub getprefs
 		while (<PREFFILE>) {
 			switch ($_) {
 				case /^ALTSELECT [A-Za-fh-z0-9,.<>?;:{}|!@#$%^&*()_=+-`~]$/
-				{ $_ =~ /ALTSELECT \(.\)/; $alt_select_key = $1; }
+				{ /ALTSELECT (.)/; $alt_select_key = $1; }
 				case /^SHORTCUT$/          { $shortcut = 1; }
 				case /^NOREVIEW$/          { $noreview = 1; }
 				case /^PERSISTENT$/        { $persist = 1; }
