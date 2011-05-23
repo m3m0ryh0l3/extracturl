@@ -1,13 +1,12 @@
 #!/usr/bin/env perl
 
 use MIME::Parser;
-use Switch;
 use HTML::Parser;
 use Getopt::Std;
 use strict;
 use warnings;
 
-my $version = "1.5.3";
+my $version = "1.5.4";
 my $printversion = '';
 my $list = '';
 
@@ -70,37 +69,34 @@ sub getprefs
 {
 	if (open(PREFFILE,'<',$ENV{'HOME'}."/.extract_urlview")) {
 		while (<PREFFILE>) {
-			switch ($_) {
-				case /^ALTSELECT [A-Za-fh-z0-9,.<>?;:{}|!@#$%^&*()_=+-`~]$/
-				{ /ALTSELECT (.)/; $alt_select_key = $1; }
-				case /^SHORTCUT$/          { $shortcut = 1; }
-				case /^NOREVIEW$/          { $noreview = 1; }
-				case /^PERSISTENT$/        { $persist = 1; }
-				case /^DISPLAY_SANITIZED$/ { $displaysanitized = 1; }
-				case /^IGNORE_EMPTY_TAGS$/ { $ignore_empty = 1; }
-				case /^COMMAND (.*)/ {
-					/^COMMAND (.*)/;
-					$urlviewcommand=$1;
-					chomp $urlviewcommand;
+			my $lineread = $_;
+			if ($lineread =~ /^ALTSELECT [A-Za-fh-z0-9,.<>?;:{}|!@#$%^&*()_=+-`~]$/) {
+				$lineread =~ /ALTSELECT (.)/; $alt_select_key = $1;
+			} elsif ($lineread =~ /^SHORTCUT$/)          { $shortcut = 1;
+			} elsif ($lineread =~ /^NOREVIEW$/)          { $noreview = 1;
+			} elsif ($lineread =~ /^PERSISTENT$/)        { $persist = 1;
+			} elsif ($lineread =~ /^DISPLAY_SANITIZED$/) { $displaysanitized = 1;
+			} elsif ($lineread =~ /^IGNORE_EMPTY_TAGS$/) { $ignore_empty = 1;
+			} elsif ($lineread =~ /^COMMAND (.*)/) {
+				$lineread =~ /^COMMAND (.*)/;
+				$urlviewcommand=$1;
+				chomp $urlviewcommand;
+			} elsif ($lineread =~ /^DEFAULT_VIEW (.*)/) {
+				$lineread =~ /^DEFAULT_VIEW (.*)/;
+				if ($1 =~ /^context$/) {
+					$default_view = "context";
+				} else {
+					$default_view = "url";
 				}
-				case /^DEFAULT_VIEW (.*)/ {
-					/^DEFAULT_VIEW (.*)/;
-					if ($1 =~ /^context$/) {
-						$default_view = "context";
-					} else {
-						$default_view = "url";
-					}
+			} elsif ($lineread =~ /^HTML_TAGS (.*)/) {
+				$lineread =~ /^HTML_TAGS (.*)/;
+				my @tags = split(',', $1);
+				my %tags_hash;
+				foreach my $tag (@tags) {
+					$tags_hash{lc $tag} = 1;
 				}
-				case /^HTML_TAGS (.*)/ {
-					/^HTML_TAGS (.*)/;
-					my @tags = split(',', $1);
-					my %tags_hash;
-					foreach my $tag (@tags) {
-						$tags_hash{lc $tag} = 1;
-					}
-					foreach my $tag (keys %link_attr) {
-						delete $link_attr{$tag} if (! exists($tags_hash{$tag}));
-					}
+				foreach my $tag (keys %link_attr) {
+					delete $link_attr{$tag} if (! exists($tags_hash{$tag}));
 				}
 			}
 		}
