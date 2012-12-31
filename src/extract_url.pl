@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# Copyright 2011 Kyle Wheeler. All rights reserved.
+# Copyright 2011-2012 Kyle Wheeler. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,7 @@ use Getopt::Std;
 use strict;
 use warnings;
 
-my $version = "1.5.4";
+my $version = "1.5.5";
 my $printversion = '';
 my $list = '';
 
