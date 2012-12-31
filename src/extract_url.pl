@@ -404,6 +404,15 @@ sub find_urls_rec
 					$skipped_text = &tidytext("$skipped_text $text");
 				}, "text");
 			$parser->parse($ent->bodyhandle->as_string);
+			$parser->eof;
+			if (length($words_since_link_end) > 0) {
+				# This is REALLY hack-ish and fragile, but can
+				# sometimes be invaluable
+				&extract_url_from_text(\$words_since_link_end);
+			}
+			if (length($skipped_text) > 0) {
+				&extract_url_from_text(\$skipped_text);
+			}
 		} elsif ($ent->mime_type =~ /text\/.*/) {
 			$ent->head->unfold;
 			my $ctype = $ent->head->get('Content-type');
