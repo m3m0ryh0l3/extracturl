@@ -1,6 +1,10 @@
 #!/usr/bin/env perl
 
-# Copyright 2011-2012 Kyle Wheeler. All rights reserved.
+# License: BSD-2-Clause (simplified)
+# URL: http://spdx.org/licenses/BSD-2-Clause
+#
+# Copyright (C) 2011-2013 Kyle Wheeler
+# All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -12,7 +16,7 @@
 #       notice, this list of conditions and the following disclaimer in the
 #       documentation and/or other materials provided with the distribution.
 #
-# THIS SOFTWARE IS PROVIDED BY KYLE WHEELER ``AS IS'' AND ANY EXPRESS OR
+# THIS SOFTWARE IS PROVIDED BY KYLE WHEELER "AS IS" AND ANY EXPRESS OR
 # IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 # MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
 # EVENT SHALL KYLE WHEELER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
@@ -689,13 +693,18 @@ if ($fancymenu == 1) {
 		print "$value\n";
 	}
 }
+
+__END__
+
+=pod
+
 =head1 NAME
 
-B<extract_url.pl> -- extract URLs from email messages
+extract_url -- extract URLs from email messages
 
 =head1 SYNOPSIS
 
-B<extract_url.pl> [B<-lv>] I<file>
+extract_url [options] I<file>
 
 =head1 DESCRIPTION
 
@@ -729,7 +738,7 @@ variations in plain text (without HTML tags)), B<Curses::UI> (allows it
 to fully replace I<urlview>), and B<Getopt::Long> (if present,
 B<extract_url.pl> recognizes long options --version and --list).
 
-=head1 USAGE
+=head1 EXAMPLES
 
 This Perl script expects a valid email to be piped in via STDIN. Its
 STDOUT can be a pipe into I<urlview> (it will detect this). Here's how
@@ -857,10 +866,19 @@ Here is an example config file:
     ALTSELECT Q
     DEFAULT_VIEW context
 
+=head1 STANDARDS
+
+None.
+
+=head1 AVAILABILITY
+
+http://www.memoryhole.net/~kyle/extract_url/
+
 =head1 SEE ALSO
 
-mutt(1), urlview(1), MIME::Parser(3), HTML::Parser(3), URI::Find(3),
-Curses::UI(3), Getopt::Long(3).
+mutt(1)
+urlview(1)
+urlscan(1)
 
 =head1 CAVEATS
 
@@ -875,5 +893,9 @@ way that you can see the whole thing.
 
 =head1 AUTHOR
 
-Kyle Wheeler (kyle@memoryhole.net)
+Program was written by Kyle Wheeler <kyle@memoryhole.net>
 
+Released under license BSD-2-Cluase (simplified) For more information
+about the license, visit <http://spdx.org/licenses/BSD-2-Clause>.
+
+=cut
