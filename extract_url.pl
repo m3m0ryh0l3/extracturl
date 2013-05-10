@@ -139,7 +139,11 @@ sub getprefs
 		close URLVIEW;
 	}
 	if ($urlviewcommand eq "") {
-		$urlviewcommand = "open";
+		if (exists $ENV{BROWSER}) {
+			$urlviewcommand=$ENV{BROWSER};
+		} else {
+			$urlviewcommand = "open";
+		}
 	}
 }
 
@@ -800,7 +804,9 @@ This line specifies the command that will be used to view URLs.  This
 command CAN contain a I<%s>, which will be replaced by the URL inside
 single-quotes. If it does not contain a I<%s>, the URL will simply be
 appended to the command. If this line is not present, the command is
-assumed to be "open", which is the correct command for MacOS X systems.
+taken from the environment variable $BROWSER. If BROWSER is not set, the
+command is assumed to be "open", which is the correct command for MacOS X
+systems.
 
 =item SHORTCUT
 
