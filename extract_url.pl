@@ -30,27 +30,40 @@
 use MIME::Parser;
 use HTML::Parser;
 use Getopt::Std;
+use Pod::Usage;
+use Env;
 use strict;
 use warnings;
 
-my $version = "1.5.6";
+my $LICENSE = "BSD-2-Clause";
+my $NAME = "extract_url";
+my $version = "1.5.7";
 my $printversion = '';
 my $list = '';
+my $help = '';
+
+sub HELP_MESSAGE {
+	pod2usage(0);
+}
+sub VERSION_MESSAGE {
+	print "$NAME $version License:$LICENSE\n";
+}
 
 my %options;
 eval "use Getopt::Long";
 if ($@) {
-	print "using short options\n";
-	&getopt("lv",\%options);
+	$Getopt::Std::STANDARD_HELP_VERSION = 1;
+	&getopts("hlV",\%options) or pod2usage(-exitval=>2,-verbose=>1);
 } else {
-	&GetOptions('version' => \$printversion, 'list' => \$list);
+	&GetOptions('Version' => sub { VERSION_MESSAGE(); exit; },
+				'help' => sub { pod2usage(-exitval=>0,-verbose=>1); },
+				'man' => sub { pod2usage(-exitval=>0, -verbose=>99); },
+				'list!' => \$list) or pod2usage(-exitval=>2,-verbose=>1);
 }
 my $fancymenu = 1;
 if ($options{'l'} || length $list) { $fancymenu = 0; }
-if ($options{'v'} || length $printversion) {
-	print "The extract_url Program, version $version\n";
-	exit;
-}
+if ($options{'V'}) { &VERSION_MESSAGE(); exit; }
+if ($options{'h'}) { &HELP_MESSAGE(); }
 
 # create a hash of html tag names that may have links
 my %link_attr = (
@@ -577,7 +590,7 @@ if ($fancymenu == 1) {
 	sub about()
 	{
 		$cui->dialog(
-			-message => "The extract_url Program, version $version"
+			-message => "$NAME $version License:$LICENSE"
 		);
 	}
 	sub show_command()
@@ -731,6 +744,28 @@ in some third program (such as Firefox). An alternative design is to
 access URLs from within mutt's pager by defining macros and tagging the
 URLs in the display to indicate which macro to use. A script you can use
 to do that is I<tagurl.pl>.  
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-h, --help>
+
+Display this help and exit.
+
+=item B<-m, --man>
+
+Display the full man page documentation.
+
+=item B<-l, --list>
+
+Prevent use of Ncurses, and simply output a list of extracted URLs.
+
+=item B<-V, --version>
+
+Output version information and exit.
+
+=back
 
 =head1 DEPENDENCIES
 
