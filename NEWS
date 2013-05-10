@@ -1,0 +1,63 @@
+2013-05-09 Kyle Wheeler <kyle@memoryhole.net>
+
+        - 1.5.7 released.
+        - Convert into distribution friendly package (AUTHORS, COPYING,
+          README, Makefile *.mk etc.) Thanks to Jari Aalto
+          <jari.aalto@cante.net>
+        - Change version option from -v, --version to -V, --version
+          according to GNU standards.
+        - Improve help message
+        - Automated man page generation
+
+2013-04-02 Kyle Wheeler <kyle@memoryhole.net>
+
+        - 1.5.6 released.
+
+...
+
+2009-07-03 Kyle Wheeler <kyle@memoryhole.net>
+
+		- 1.5 released
+		- Fixed undefined variable errors when used without URI::Find
+		- Can toggle between showing the context of URLs in the main list and
+		  showing the URLs themselves.
+		- Can specify whether to show the list of URLs at first (default) or to
+		  show the list of URL contexts
+
+2008-10-24 Kyle Wheeler <kyle@memoryhole.net>
+
+		- 1.4.1 released
+		- Better contextual text handling (uses word boundaries instead of
+		  explicit string lengths).
+		- Pulls URLs out of HTML text AS WELL as HTML tags (silly, but
+		  sometimes necessary). This text handling is not especially detailed,
+		  and so may be somewhat sensitive to formatting issues (unexpected
+		  line breaks, etc).
+
+2008-10-14 Kyle Wheeler <kyle@memoryhole.net>
+
+		- 1.4 released
+		- Added support for a configurable alternative selection key (via
+		  ALTSELECT), allowing a person to, in effect, temporarily negate the
+		  PERSISTENT setting.
+		- Added conditional support for long options, if Getopt::Long is
+		  available.
+
+2008-09-22 Kyle Wheeler <kyle@memoryhole.net>
+
+		- 1.3.3 released
+		- Sometimes, multipart/alternative parts don't actually have an
+		  alternative, which could fool this script. Now they're handled
+		  correctly (normal text/plain have 0 parts, according to the MIME
+		  parser).
+
+2008-06-09 Kyle Wheeler <kyle@memoryhole.net>
+
+		- 1.3.2 released
+		- Discovered some really strange-looking emails (possibly with broken
+		  UTF-8 encoding) that interfere with maintaining context information
+		  for each URL. Added a workaround so that the script doesn't error out
+		  (there just might not be any context for some URLs in those
+		  messages).
+
+...

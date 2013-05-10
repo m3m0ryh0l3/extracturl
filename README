@@ -1,0 +1,35 @@
+Project
+
+	http://www.memoryhole.net/~kyle/extract_url
+
+Description
+
+	Replacement for urlview to parse URL links from mail messages.
+
+	This is designed primarily for use with the mutt emailer. The
+	idea is that if you want to access a URL in an email, you pipe
+	the email to a URL extractor (like this one) which then lets
+	you select a URL to view in some third program (such as
+	Firefox)
+
+Dependencies
+
+	MANDATORY (these usually come with Perl):
+
+	MIME::Parser
+	HTML::Parser
+
+	OPTIONAL:
+
+	URI::Find
+	- recognizes more exotic URL variations in plain text (without
+	  HTML tags)
+
+	Curses::UI
+	- allows it to fully replace urlview
+
+	Getopt::Long
+	- if present, extract_url recognizes long options -version and
+	  --list
+
+End of file
