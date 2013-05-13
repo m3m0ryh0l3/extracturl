@@ -29,7 +29,6 @@
 
 use MIME::Parser;
 use HTML::Parser;
-use IO::Scalar;
 use Getopt::Std;
 use Pod::Usage;
 use Env;
@@ -519,23 +518,21 @@ sub isOutputScreen {
 
 &getprefs();
 $parser->output_to_core(1);
+my $filecontents;
 if ($#ARGV == 0) {
 	open(INPUT, "<$ARGV[0]") or die "Couldn't open input file $ARGV[0]: $!";
+	$filecontents = join('',<INPUT>);
+	close(INPUT);
 } else {
-	open(INPUT, "<&STDIN") or die "Couldn't dup STDIN: $!";
+	die "no input provided!\n" if POSIX::isatty( \*STDIN) ne "" ; # pipe
+	$filecontents = join('',<STDIN>);
 }
-die "no input provided!\n" if POSIX::isatty( \*INPUT) ne "" ; # pipe
 
 if (not $txtonly) {
-# This trick for rewinding STDIN is from here: http://www.perlmonks.org/?node_id=33587
-	my $rewindablestdin = join '',<INPUT>;
-	my $s;
-	tie *INPUT, 'IO::Scalar', \$s;
-	my $entity = $parser->parse(\*INPUT) or die "parse failed\n";
+	my $entity = $parser->parse_data($filecontents);
 	&find_urls_rec($entity);
 	if (scalar(keys %link_hash) == 0) {
-		tied(*INPUT)->setpos(0);
-		&extract_url_from_text(\$rewindablestdin);
+		&extract_url_from_text(\$filecontents);
 	}
 } else {
 	my @lines = <INPUT>; # slurp in the whole file
