@@ -39,7 +39,7 @@ use warnings;
 my $LICENSE = "BSD-2-Clause";
 my $NAME = "extract_url";
 my $version = "1.5.7";
-my $printversion = '';
+my $txtonly = 0;
 my $list = '';
 my $help = '';
 
@@ -54,11 +54,12 @@ my %options;
 eval "use Getopt::Long";
 if ($@) {
 	$Getopt::Std::STANDARD_HELP_VERSION = 1;
-	&getopts("hlV",\%options) or pod2usage(-exitval=>2,-verbose=>1);
+	&getopts("hltV",\%options) or pod2usage(-exitval=>2,-verbose=>1);
 } else {
 	&GetOptions('Version' => sub { VERSION_MESSAGE(); exit; },
 				'help' => sub { pod2usage(-exitval=>0,-verbose=>1); },
 				'man' => sub { pod2usage(-exitval=>0, -verbose=>99); },
+				'text' => \$txtonly,
 				'list!' => \$list) or pod2usage(-exitval=>2,-verbose=>1);
 }
 my $fancymenu = 1;
@@ -520,15 +521,21 @@ sub isOutputScreen {
 $parser->output_to_core(1);
 die "no input provided!\n" if POSIX::isatty( \*STDIN) ne "" ; # pipe
 
+if (not $txtonly) {
 # This trick for rewinding STDIN is from here: http://www.perlmonks.org/?node_id=33587
-my $rewindablestdin = join '',<STDIN>;
-my $s;
-tie *STDIN, 'IO::Scalar', \$s;
-my $entity = $parser->parse(\*STDIN) or die "parse failed\n";
-&find_urls_rec($entity);
-if (scalar(keys %link_hash) == 0) {
-	tied(*STDIN)->setpos(0);
-	&extract_url_from_text(\$rewindablestdin);
+	my $rewindablestdin = join '',<STDIN>;
+	my $s;
+	tie *STDIN, 'IO::Scalar', \$s;
+	my $entity = $parser->parse(\*STDIN) or die "parse failed\n";
+	&find_urls_rec($entity);
+	if (scalar(keys %link_hash) == 0) {
+		tied(*STDIN)->setpos(0);
+		&extract_url_from_text(\$rewindablestdin);
+	}
+} else {
+	my @lines = <STDIN>; # slurp in the whole file
+	my $filebody = join("", @lines); # generate a single string from those lines
+	&extract_url_from_text(\$filebody);
 }
 
 if (&isOutputScreen) {
@@ -770,6 +777,10 @@ Display the full man page documentation.
 =item B<-l, --list>
 
 Prevent use of Ncurses, and simply output a list of extracted URLs.
+
+=item B<-t, --text>
+
+Prevent MIME handling; treat the input as plain text.
 
 =item B<-V, --version>
 
