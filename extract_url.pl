@@ -519,21 +519,26 @@ sub isOutputScreen {
 
 &getprefs();
 $parser->output_to_core(1);
-die "no input provided!\n" if POSIX::isatty( \*STDIN) ne "" ; # pipe
+if ($#ARGV == 0) {
+	open(INPUT, "<$ARGV[0]") or die "Couldn't open input file $ARGV[0]: $!";
+} else {
+	open(INPUT, "<&STDIN") or die "Couldn't dup STDIN: $!";
+}
+die "no input provided!\n" if POSIX::isatty( \*INPUT) ne "" ; # pipe
 
 if (not $txtonly) {
 # This trick for rewinding STDIN is from here: http://www.perlmonks.org/?node_id=33587
-	my $rewindablestdin = join '',<STDIN>;
+	my $rewindablestdin = join '',<INPUT>;
 	my $s;
-	tie *STDIN, 'IO::Scalar', \$s;
-	my $entity = $parser->parse(\*STDIN) or die "parse failed\n";
+	tie *INPUT, 'IO::Scalar', \$s;
+	my $entity = $parser->parse(\*INPUT) or die "parse failed\n";
 	&find_urls_rec($entity);
 	if (scalar(keys %link_hash) == 0) {
-		tied(*STDIN)->setpos(0);
+		tied(*INPUT)->setpos(0);
 		&extract_url_from_text(\$rewindablestdin);
 	}
 } else {
-	my @lines = <STDIN>; # slurp in the whole file
+	my @lines = <INPUT>; # slurp in the whole file
 	my $filebody = join("", @lines); # generate a single string from those lines
 	&extract_url_from_text(\$filebody);
 }
@@ -800,12 +805,14 @@ B<extract_url.pl> recognizes long options --version and --list).
 
 =head1 EXAMPLES
 
-This Perl script expects a valid email to be piped in via STDIN. Its
-STDOUT can be a pipe into I<urlview> (it will detect this). Here's how
-you can use it:
+This Perl script expects a valid email to be either piped in via STDIN or in a
+file listed as the script's only argument. Its STDOUT can be a pipe into
+I<urlview> (it will detect this). Here's how you can use it:
 
     cat message.txt | extract_url.pl
     cat message.txt | extract_url.pl | urlview
+    extract_url.pl message.txt
+    extract_url.pl message.txt | urlview
 
 For use with B<mutt 1.4.x>, here's a macro you can use:
 
