@@ -29,6 +29,7 @@
 
 use MIME::Parser;
 use HTML::Parser;
+use IO::Scalar;
 use Getopt::Std;
 use Pod::Usage;
 use Env;
@@ -518,8 +519,17 @@ sub isOutputScreen {
 &getprefs();
 $parser->output_to_core(1);
 die "no input provided!\n" if POSIX::isatty( \*STDIN) ne "" ; # pipe
+
+# This trick for rewinding STDIN is from here: http://www.perlmonks.org/?node_id=33587
+my $rewindablestdin = join '',<STDIN>;
+my $s;
+tie *STDIN, 'IO::Scalar', \$s;
 my $entity = $parser->parse(\*STDIN) or die "parse failed\n";
 &find_urls_rec($entity);
+if (scalar(keys %link_hash) == 0) {
+	tied(*STDIN)->setpos(0);
+	&extract_url_from_text(\$rewindablestdin);
+}
 
 if (&isOutputScreen) {
 	eval "use Curses::UI";
