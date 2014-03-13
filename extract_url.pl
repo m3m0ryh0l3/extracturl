@@ -37,7 +37,7 @@ use warnings;
 
 my $LICENSE = "BSD-2-Clause";
 my $NAME = "extract_url";
-my $version = "1.5.7";
+my $version = "1.5.8";
 my $txtonly = 0;
 my $list = '';
 my $help = '';
