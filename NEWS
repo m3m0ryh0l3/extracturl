@@ -1,3 +1,8 @@
+2015-07-25 Kyle Wheeler <kyle@memoryhole.net>
+
+		- 1.6 released.
+		- Add a way to force quoted-printable decoding of plain text.
+
 2013-05-09 Kyle Wheeler <kyle@memoryhole.net>
 
         - 1.5.7 released.

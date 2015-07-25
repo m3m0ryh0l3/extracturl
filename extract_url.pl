@@ -37,8 +37,9 @@ use warnings;
 
 my $LICENSE = "BSD-2-Clause";
 my $NAME = "extract_url";
-my $version = "1.5.7";
+my $version = "1.6";
 my $txtonly = 0;
+my $manual_quoted = 0;
 my $list = '';
 my $help = '';
 
@@ -53,18 +54,21 @@ my %options;
 eval "use Getopt::Long";
 if ($@) {
 	$Getopt::Std::STANDARD_HELP_VERSION = 1;
-	&getopts("hltV",\%options) or pod2usage(-exitval=>2,-verbose=>1);
+	&getopts("hltqV",\%options) or pod2usage(-exitval=>2,-verbose=>1);
 } else {
 	&GetOptions('Version' => sub { VERSION_MESSAGE(); exit; },
 				'help' => sub { pod2usage(-exitval=>0,-verbose=>1); },
 				'man' => sub { pod2usage(-exitval=>0, -verbose=>99); },
 				'text' => \$txtonly,
+				'quoted' => \$manual_quoted,
 				'list!' => \$list) or pod2usage(-exitval=>2,-verbose=>1);
 }
 my $fancymenu = 1;
 if ($options{'l'} || length $list) { $fancymenu = 0; }
 if ($options{'V'}) { &VERSION_MESSAGE(); exit; }
 if ($options{'h'}) { &HELP_MESSAGE(); }
+if ($options{'q'}) { $manual_quoted = 1; }
+if ($options{'t'}) { $txtonly = 1; }
 
 # create a hash of html tag names that may have links
 my %link_attr = (
@@ -535,9 +539,16 @@ if (not $txtonly) {
 		&extract_url_from_text(\$filecontents);
 	}
 } else {
-	my @lines = <INPUT>; # slurp in the whole file
-	my $filebody = join("", @lines); # generate a single string from those lines
-	&extract_url_from_text(\$filebody);
+	if ($manual_quoted) {
+		eval "use MIME::Quoted";
+		if ($@) {
+			$filecontents = decode_qp($filecontents);
+		} else {
+			$filecontents =~ s/=\r?\n//g;
+			$filecontents =~ s/=([A-Fa-f0-9]{2})/chr(hex($1))/egs;
+		}
+	}
+	&extract_url_from_text(\$filecontents);
 }
 
 if (&isOutputScreen) {
@@ -784,6 +795,10 @@ Prevent use of Ncurses, and simply output a list of extracted URLs.
 
 Prevent MIME handling; treat the input as plain text.
 
+=item B<-q, --quoted>
+
+Force a quoted-printable decode on plain text.
+
 =item B<-V, --version>
 
 Output version information and exit.
@@ -792,12 +807,13 @@ Output version information and exit.
 
 =head1 DEPENDENCIES
 
-Mandatory dependencies are B<MIME::Parser> and B<HTML::Parser>.  These
-usually come with Perl. 
+Mandatory dependencies are B<MIME::Parser> and B<HTML::Parser>.  These usually
+come with Perl. 
 
 Optional dependencies are B<URI::Find> (recognizes more exotic URL
 variations in plain text (without HTML tags)), B<Curses::UI> (allows it
-to fully replace I<urlview>), and B<Getopt::Long> (if present,
+to fully replace I<urlview>), B<MIME::Quoted> (does a more standardized decode
+of quoted-printable characters in plain text), and B<Getopt::Long> (if present,
 B<extract_url.pl> recognizes long options --version and --list).
 
 =head1 EXAMPLES

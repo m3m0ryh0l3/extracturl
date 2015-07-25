@@ -17,6 +17,7 @@ Dependencies
 	MANDATORY (these usually come with Perl):
 
 	MIME::Parser
+    MIME::Quoted
 	HTML::Parser
 
 	OPTIONAL:
