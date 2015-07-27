@@ -274,6 +274,9 @@ sub extract_url_from_text {
 		$$foundurl_text_text =~ s{(((mms|ftp|http|https)://|news:)[][A-Za-z0-9_.~!*'();:@&=+,/?%#-]+[^](,.'">;[:space:]]|(mailto:)?[-a-zA-Z_0-9.+]+@[-a-zA-Z_0-9.]+)}{
 			&foundurl_text($1,$1);
 		}eg;
+		$$foundurl_text_text =~ s{(((mms|ftp|http|https)://|news:)?[][A-Za-z0-9_.~!*'();:@&=+,/?%#-]+[^](,.'">;[:space:]]\.(com|net|org|gov)(\.[a-zA-Z]{2})?|(mailto:)?[-a-zA-Z_0-9.+]+@[-a-zA-Z_0-9.]+)}{
+			&foundurl_text($1,$1);
+		}eg;
 	}
 }
 
