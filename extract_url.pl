@@ -51,8 +51,7 @@ sub VERSION_MESSAGE {
 }
 
 my %options;
-eval "use Getopt::Long";
-if ($@) {
+if (! eval "use Getopt::Long; 1") {
 	$Getopt::Std::STANDARD_HELP_VERSION = 1;
 	&getopts("hltqV",\%options) or pod2usage(-exitval=>2,-verbose=>1);
 } else {
@@ -265,12 +264,13 @@ sub extract_url_from_text {
 	# %link_hash to be full of URLs. My regex (in the else statement)
 	# is decent, but imperfect. URI::Find is better.
 	my $fancyfind=1;
-	eval "use URI::Find::Schemeless";
-	$fancyfind=0 if ($@);
+	eval "use URI::Find::Schemeless; 1" or $fancyfind=0;
 	if ($fancyfind == 1) {
+		#print "FancyFind\n";
 		my $finder = URI::Find::Schemeless->new(\&foundurl_text);
 		$finder->find($foundurl_text_text);
 	} else {
+		#print "ManualFind\n";
 		$$foundurl_text_text =~ s{(((mms|ftp|http|https)://|news:)[][A-Za-z0-9_.~!*'();:@&=+,/?%#-]+[^](,.'">;[:space:]]|(mailto:)?[-a-zA-Z_0-9.+]+@[-a-zA-Z_0-9.]+)}{
 			&foundurl_text($1,$1);
 		}eg;
@@ -540,8 +540,7 @@ if (not $txtonly) {
 	}
 } else {
 	if ($manual_quoted) {
-		eval "use MIME::Quoted";
-		if ($@) {
+		if (eval "use MIME::Quoted; 1") {
 			$filecontents = decode_qp($filecontents);
 		} else {
 			$filecontents =~ s/=\r?\n//g;
@@ -552,8 +551,9 @@ if (not $txtonly) {
 }
 
 if (&isOutputScreen) {
-	eval "use Curses::UI";
-	$fancymenu = 0 if ($@);
+	if ($fancymenu == 1) {
+		eval "use Curses::UI; 1" or $fancymenu = 0;
+	}
 } else {
 	$fancymenu = 0;
 }
