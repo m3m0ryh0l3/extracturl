@@ -42,6 +42,7 @@ my $txtonly = 0;
 my $manual_quoted = 0;
 my $list = '';
 my $help = '';
+my $configfile = '';
 
 sub HELP_MESSAGE {
 	pod2usage(0);
@@ -51,16 +52,17 @@ sub VERSION_MESSAGE {
 }
 
 my %options;
-if (! eval "use Getopt::Long; 1") {
-	$Getopt::Std::STANDARD_HELP_VERSION = 1;
-	&getopts("hltqV",\%options) or pod2usage(-exitval=>2,-verbose=>1);
-} else {
+if (eval "use Getopt::Long; 1") {
 	&GetOptions('Version' => sub { VERSION_MESSAGE(); exit; },
 				'help' => sub { pod2usage(-exitval=>0,-verbose=>1); },
 				'man' => sub { pod2usage(-exitval=>0, -verbose=>99); },
 				'text' => \$txtonly,
 				'quoted' => \$manual_quoted,
+				'config=s' => \$configfile,
 				'list!' => \$list) or pod2usage(-exitval=>2,-verbose=>1);
+} else {
+	$Getopt::Std::STANDARD_HELP_VERSION = 1;
+	&getopts("c:hltqV",\%options) or pod2usage(-exitval=>2,-verbose=>1);
 }
 my $fancymenu = 1;
 if ($options{'l'} || length $list) { $fancymenu = 0; }
@@ -68,6 +70,7 @@ if ($options{'V'}) { &VERSION_MESSAGE(); exit; }
 if ($options{'h'}) { &HELP_MESSAGE(); }
 if ($options{'q'}) { $manual_quoted = 1; }
 if ($options{'t'}) { $txtonly = 1; }
+if ($options{'c'}) { $configfile = $options{'c'}; }
 
 # create a hash of html tag names that may have links
 my %link_attr = (
@@ -109,51 +112,65 @@ my $persist  = 0; # means don't exit after viewing a URL (ignored if $shortcut =
 my $ignore_empty = 0; # means to throw out URLs that don't have text in HTML
 my $default_view = "url"; # means what shows up in the list by default: urls or contexts
 my $alt_select_key = 'k';
+sub read_extracturl_prefs
+{
+	my $f = shift(@_);
+	open(PREFFILE, '<', $f) or return 0;
+	while (<PREFFILE>) {
+		my $lineread = $_;
+		if ($lineread =~ /^ALTSELECT [A-Za-fh-z0-9,.<>?;:{}|!@#$%^&*()_=+-`~]$/) {
+			$lineread =~ /ALTSELECT (.)/; $alt_select_key = $1;
+		} elsif ($lineread =~ /^SHORTCUT$/)          { $shortcut = 1;
+		} elsif ($lineread =~ /^NOREVIEW$/)          { $noreview = 1;
+		} elsif ($lineread =~ /^PERSISTENT$/)        { $persist = 1;
+		} elsif ($lineread =~ /^DISPLAY_SANITIZED$/) { $displaysanitized = 1;
+		} elsif ($lineread =~ /^IGNORE_EMPTY_TAGS$/) { $ignore_empty = 1;
+		} elsif ($lineread =~ /^COMMAND (.*)/) {
+			$lineread =~ /^COMMAND (.*)/;
+			$urlviewcommand=$1;
+			chomp $urlviewcommand;
+		} elsif ($lineread =~ /^DEFAULT_VIEW (.*)/) {
+			$lineread =~ /^DEFAULT_VIEW (.*)/;
+			if ($1 =~ /^context$/) {
+				$default_view = "context";
+			} else {
+				$default_view = "url";
+			}
+		} elsif ($lineread =~ /^HTML_TAGS (.*)/) {
+			$lineread =~ /^HTML_TAGS (.*)/;
+			my @tags = split(',', $1);
+			my %tags_hash;
+			foreach my $tag (@tags) {
+				$tags_hash{lc $tag} = 1;
+			}
+			foreach my $tag (keys %link_attr) {
+				delete $link_attr{$tag} if (! exists($tags_hash{$tag}));
+			}
+		}
+	}
+	close PREFFILE;
+	return 1;
+}
+sub read_urlview_prefs
+{
+	my $f = shift(@_);
+	open(URLVIEW,'<',$ENV{HOME}."/.urlview") or return 0;
+	while (<URLVIEW>) {
+		if (/^COMMAND (.*)/) {
+			$urlviewcommand=$1;
+			chomp $urlviewcommand;
+			last;
+		}
+	}
+	close URLVIEW;
+}
 sub getprefs
 {
-	if (open(PREFFILE,'<',$ENV{'HOME'}."/.extract_urlview")) {
-		while (<PREFFILE>) {
-			my $lineread = $_;
-			if ($lineread =~ /^ALTSELECT [A-Za-fh-z0-9,.<>?;:{}|!@#$%^&*()_=+-`~]$/) {
-				$lineread =~ /ALTSELECT (.)/; $alt_select_key = $1;
-			} elsif ($lineread =~ /^SHORTCUT$/)          { $shortcut = 1;
-			} elsif ($lineread =~ /^NOREVIEW$/)          { $noreview = 1;
-			} elsif ($lineread =~ /^PERSISTENT$/)        { $persist = 1;
-			} elsif ($lineread =~ /^DISPLAY_SANITIZED$/) { $displaysanitized = 1;
-			} elsif ($lineread =~ /^IGNORE_EMPTY_TAGS$/) { $ignore_empty = 1;
-			} elsif ($lineread =~ /^COMMAND (.*)/) {
-				$lineread =~ /^COMMAND (.*)/;
-				$urlviewcommand=$1;
-				chomp $urlviewcommand;
-			} elsif ($lineread =~ /^DEFAULT_VIEW (.*)/) {
-				$lineread =~ /^DEFAULT_VIEW (.*)/;
-				if ($1 =~ /^context$/) {
-					$default_view = "context";
-				} else {
-					$default_view = "url";
-				}
-			} elsif ($lineread =~ /^HTML_TAGS (.*)/) {
-				$lineread =~ /^HTML_TAGS (.*)/;
-				my @tags = split(',', $1);
-				my %tags_hash;
-				foreach my $tag (@tags) {
-					$tags_hash{lc $tag} = 1;
-				}
-				foreach my $tag (keys %link_attr) {
-					delete $link_attr{$tag} if (! exists($tags_hash{$tag}));
-				}
-			}
-		}
-		close PREFFILE;
-	} elsif (open(URLVIEW,'<',$ENV{'HOME'}."/.urlview")) {
-		while (<URLVIEW>) {
-			if (/^COMMAND (.*)/) {
-				$urlviewcommand=$1;
-				chomp $urlviewcommand;
-				last;
-			}
-		}
-		close URLVIEW;
+	if ($configfile ne '') {
+		&read_extracturl_prefs($configfile) or die "Could not read config file ($configfile): $!\n";
+	} elsif (exists $ENV{HOME}) {
+		&read_extracturl_prefs($ENV{HOME}."/.extract_urlview") or
+		&read_urlview_prefs($ENV{HOME}."/.urlview");
 	}
 	if ($urlviewcommand eq "") {
 		if (exists $ENV{BROWSER}) {
@@ -801,6 +818,10 @@ Prevent MIME handling; treat the input as plain text.
 =item B<-q, --quoted>
 
 Force a quoted-printable decode on plain text.
+
+=item B<-c, --config>
+
+Specify a config file to read.
 
 =item B<-V, --version>
 
