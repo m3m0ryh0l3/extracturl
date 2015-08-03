@@ -249,7 +249,7 @@ sub renderuri {
 }
 sub sanitizeuri {
 	my($uri) = @_;
-	$uri =~ s/([^a-zA-Z0-9_.!*()\@:=\?\/%~+-])/sprintf("%%%X",ord($1))/egs;
+	$uri =~ s/([^a-zA-Z0-9_.!*()\@:=\?\/%~+-\\#])/sprintf("%%%X",ord($1))/egs;
 	return $uri;
 }
 
@@ -560,7 +560,7 @@ if (not $txtonly) {
 	}
 } else {
 	if ($manual_quoted) {
-		if (eval "use MIME::Quoted; 1") {
+		if (eval "use MIME::QuotedPrint; 1") {
 			$filecontents = decode_qp($filecontents);
 		} else {
 			$filecontents =~ s/=\r?\n//g;
