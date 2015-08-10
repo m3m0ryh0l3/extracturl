@@ -112,6 +112,7 @@ my $persist  = 0; # means don't exit after viewing a URL (ignored if $shortcut =
 my $ignore_empty = 0; # means to throw out URLs that don't have text in HTML
 my $default_view = "url"; # means what shows up in the list by default: urls or contexts
 my $alt_select_key = 'k';
+my $sanitize_reserved = 1;
 sub read_extracturl_prefs
 {
 	my $f = shift(@_);
@@ -125,6 +126,7 @@ sub read_extracturl_prefs
 		} elsif ($lineread =~ /^PERSISTENT$/)        { $persist = 1;
 		} elsif ($lineread =~ /^DISPLAY_SANITIZED$/) { $displaysanitized = 1;
 		} elsif ($lineread =~ /^IGNORE_EMPTY_TAGS$/) { $ignore_empty = 1;
+		} elsif ($lineread =~ /^RAW_RESERVED$/)      { $sanitize_reserved = 0;
 		} elsif ($lineread =~ /^COMMAND (.*)/) {
 			$lineread =~ /^COMMAND (.*)/;
 			$urlviewcommand=$1;
@@ -249,7 +251,11 @@ sub renderuri {
 }
 sub sanitizeuri {
 	my($uri) = @_;
-	$uri =~ s/([^a-zA-Z0-9_.!*()\@:=\?\/%~+-\\#])/sprintf("%%%X",ord($1))/egs;
+	if ($sanitize_reserved) {
+		$uri =~ s/([^a-zA-Z0-9_.~%:\/-])/sprintf("%%%X",ord($1))/egs;
+	} else {
+		$uri =~ s/([^a-zA-Z0-9_.~%:\/!*();\@&=+\$,\?#[]-])/sprintf("%%%X",ord($1))/egs;
+	}
 	return $uri;
 }
 
@@ -588,7 +594,7 @@ if ($fancymenu == 1) {
 		if ($urlviewcommand =~ m/%s/) {
 			$urlviewcommand =~ s/%s/'$url'/g;
 		} else {
-			$urlviewcommand .= " $url";
+			$urlviewcommand .= " '$url'";
 		}
 		system $urlviewcommand;
 		exit 0;
@@ -933,6 +939,10 @@ By default, the script collects all the URLs it can find.  Sometimes,
 though, HTML messages contain links that don't correspond to any text
 (and aren't normally rendered or accessible). This tells the script to
 ignore these links.
+
+=item RAW_RESERVED
+
+By default, the script sanitizes URLs pretty thoroughly, eliminating all characters that are not part of the Unreserved class (per RFC 3986). Sometimes, though, this is not desirable. This tells the script to leave the Reserved Characters un-encoded (with the exception of the single quote).
 
 =item HTML_TAGS ...
 
