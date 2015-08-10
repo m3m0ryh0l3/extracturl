@@ -29,3 +29,6 @@
 
 # Sanitize URLs before they are displayed
 #DISPLAY_SANITIZED
+
+# Avoid sanitizing the Reserved characters from RFC 3986
+#RAW_RESERVED
