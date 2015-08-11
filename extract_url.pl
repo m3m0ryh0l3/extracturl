@@ -32,6 +32,7 @@ use HTML::Parser;
 use Getopt::Std;
 use Pod::Usage;
 use Env;
+use POSIX ":sys_wait_h";
 use strict;
 use warnings;
 
@@ -263,7 +264,11 @@ sub sanitizeuri {
 	if ($sanitize_reserved) {
 		$uri =~ s/([^a-zA-Z0-9_.~%:\/-])/sprintf("%%%X",ord($1))/egs;
 	} else {
-		$uri =~ s/([^a-zA-Z0-9_.~%:\/!*();\@&=+\$,\?#[]-])/sprintf("%%%X",ord($1))/egs;
+		if ($command_uses_shell) {
+			$uri =~ s/([^a-zA-Z0-9_.~%:\/!*();\@&=+\$,\?#[]-])/sprintf("%%%X",ord($1))/egs;
+		} else {
+			$uri =~ s/([^a-zA-Z0-9_.~%:'\\\/!*();\@&=+\$,\?#[]-])/sprintf("%%%X",ord($1))/egs;
+		}
 	}
 	return $uri;
 }
@@ -600,12 +605,14 @@ if ($fancymenu == 1) {
 	if ($shortcut == 1 && 1 == scalar keys %link_hash) {
 		my ($url) = each %link_hash;
 		$url = &sanitizeuri($url);
-		if ($urlviewcommand =~ m/%s/) {
+		if ($command_uses_shell) {
 			$urlviewcommand =~ s/%s/'$url'/g;
+			system $urlviewcommand;
 		} else {
-			$urlviewcommand .= " '$url'";
+			# This technique means the URL will not be subject to shell escaping
+			my @args = ($urlviewcommand, $url);
+			system $urlviewcommand @args;
 		}
-		system $urlviewcommand;
 		exit 0;
 	}
 
@@ -716,10 +723,11 @@ if ($fancymenu == 1) {
 		my $rawurl = $listhash_url{$listbox->get_active_value()};
 		my $url = &sanitizeuri($rawurl);
 		my $command = $urlviewcommand;
-		if ($command =~ m/%s/) {
+		my @commandargs;
+		if ($command_uses_shell) {
 			$command =~ s/%s/'$url'/g;
 		} else {
-			$command .= " $url";
+			@commandargs = ($command, $url);
 		}
 		my $return = 1;
 		if ($noreview != 1 && length($rawurl) > ($cui->width()-2)) {
@@ -730,7 +738,11 @@ if ($fancymenu == 1) {
 				);
 		}
 		if ($return) {
-			system $command;
+			if ($command_uses_shell) {
+				system $command;
+			} else {
+				system $command @commandargs;
+			}
 			if ($stayopen == 0) {
 				exit 0 if ($persist == 0);
 			} else {
