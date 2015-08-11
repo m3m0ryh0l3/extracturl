@@ -105,6 +105,7 @@ my %link_attr = (
 
 # find out the URLVIEW command
 my $urlviewcommand="";
+my $command_uses_shell = 1;
 my $displaysanitized = 0; # means to display the pre-sanitized URL instead of the pretty one
 my $shortcut = 0; # means open it without checking if theres only 1 URL
 my $noreview = 0; # means don't display overly-long URLs to be checked before opening
@@ -131,6 +132,9 @@ sub read_extracturl_prefs
 			$lineread =~ /^COMMAND (.*)/;
 			$urlviewcommand=$1;
 			chomp $urlviewcommand;
+			$urlviewcommand =~ s/\$([A-Za-z][A-Za-z0-9]*)/$ENV{$1}/g;
+			if ($urlviewcommand =~ m/%s/) { $command_uses_shell = 1; }
+			else { $command_uses_shell = 0; }
 		} elsif ($lineread =~ /^DEFAULT_VIEW (.*)/) {
 			$lineread =~ /^DEFAULT_VIEW (.*)/;
 			if ($1 =~ /^context$/) {
@@ -161,6 +165,9 @@ sub read_urlview_prefs
 		if (/^COMMAND (.*)/) {
 			$urlviewcommand=$1;
 			chomp $urlviewcommand;
+			$urlviewcommand =~ s/\$([A-Za-z][A-Za-z0-9]*)/$ENV{$1}/g;
+			if ($urlviewcommand =~ m/%s/) { $command_uses_shell = 1; }
+			else { $command_uses_shell = 0; }
 			last;
 		}
 	}
@@ -180,6 +187,8 @@ sub getprefs
 		} else {
 			$urlviewcommand = "open";
 		}
+		if ($urlviewcommand =~ m/%s/) { $command_uses_shell = 1; }
+		else { $command_uses_shell = 0; }
 	}
 }
 
@@ -760,6 +769,7 @@ if ($fancymenu == 1) {
 	$cui->mainloop();
 } else {
 	# using this as a pass-thru to URLVIEW
+	$command_uses_shell = 0;
 	foreach my $value (sort {$link_hash{$a} <=> $link_hash{$b} } keys %link_hash)
 	{
 		$value = &sanitizeuri($value);
