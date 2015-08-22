@@ -21,9 +21,9 @@ Dependencies
 
 	OPTIONAL:
 
-    MIME::QuotedPrint
-    - decodes quoted-printable encoded messages per RFC 2045 (handles corner 
-      cases better than the builtin decoder)
+	MIME::QuotedPrint
+	- decodes quoted-printable encoded messages per RFC 2045 (handles corner 
+	  cases better than the builtin decoder)
 
 	URI::Find
 	- recognizes more exotic URL variations in plain text (without
