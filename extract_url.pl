@@ -38,7 +38,7 @@ use warnings;
 
 my $LICENSE = "BSD-2-Clause";
 my $NAME = "extract_url";
-my $version = "1.6";
+my $version = "1.6.1";
 my $txtonly = 0;
 my $manual_quoted = 0;
 my $list = '';
@@ -51,6 +51,22 @@ sub HELP_MESSAGE {
 sub VERSION_MESSAGE {
 	print "$NAME $version License:$LICENSE\n";
 }
+
+my $term_cols = 80;
+my ($term_rows, $term_wpix, $term_hpix);
+if (eval "use Term::Readkey") {
+    ($term_cols, $term_rows, $term_wpix, $term_hpix) = GetTerminalSize();
+} else {
+    require 'sys/ioctl.ph';
+    if (defined &TIOCGWINSZ and open(TTY, "+</dev/tty")) {
+        my $winsize = '';
+        unless (ioctl(TTY, &TIOCGWINSZ, $winsize)) {
+            die sprintf "$0: ioctl TIOCGWINSZ (%08x: $!)\n", &TIOCGWINSZ;
+        }
+        ($term_rows, $term_cols, $term_wpix, $term_hpix) = unpack('S4', $winsize);
+    }
+}
+my $list_width = $term_cols - 4; # 4 is for the border width on either side
 
 my %options;
 if (eval "use Getopt::Long; 1") {
@@ -277,20 +293,28 @@ my $parser = new MIME::Parser;
 
 my %closedurls;
 
+sub context_char_count
+{
+    # 4 is for the border width on either side
+    return ($list_width - length(" =>URL<= "))/2;
+}
+
 sub process_sincelast
 {
 	my($url,$prev,$sincelast) = @_;
 	if (length($prev) > 0 && ! exists($closedurls{$prev})) {
-		$orig_text{$prev} .= " ".substr($sincelast,0,30);
+        # Fill the remaining space with context
+        my $remaining_space = $list_width - length($orig_text{$prev});
+		$orig_text{$prev} .= " ".substr($sincelast,0,$remaining_space);
 		$closedurls{$prev} = 1;
 		#print "URL(".$link_hash{$prev}.":".$newlink."): $prev ->\n\t".$orig_text{$prev}."\n\n";
 	}
 	if (! exists($closedurls{$url})) {
-		my $beforetext = substr $sincelast, -30;
+		my $beforetext = substr $sincelast, -1 * &context_char_count();
 		if (length($beforetext)) {
-			$orig_text{$url} = "$beforetext =>URL<=";
+            $orig_text{$url} = "$beforetext <|URL|>";
 		} else {
-			$orig_text{$url} = "=>URL<=";
+			$orig_text{$url} = "<|URL|>";
 		}
 	}
 }
