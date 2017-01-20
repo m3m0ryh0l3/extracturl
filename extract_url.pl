@@ -53,11 +53,10 @@ sub VERSION_MESSAGE {
 }
 
 my $term_cols = 80;
-my ($term_rows, $term_wpix, $term_hpix);
-if (eval "use Term::Readkey") {
+my ($term_rows, $term_wpix, $term_hpix, $list_width);
+if (eval "use Term::ReadKey qw(GetTerminalSize); 1") {
     ($term_cols, $term_rows, $term_wpix, $term_hpix) = GetTerminalSize();
-} else {
-    require 'sys/ioctl.ph';
+} elsif (eval "use 'sys/ioctl.ph'; 1") {
     if (defined &TIOCGWINSZ and open(TTY, "+</dev/tty")) {
         my $winsize = '';
         unless (ioctl(TTY, &TIOCGWINSZ, $winsize)) {
@@ -65,8 +64,10 @@ if (eval "use Term::Readkey") {
         }
         ($term_rows, $term_cols, $term_wpix, $term_hpix) = unpack('S4', $winsize);
     }
+} elsif (defined $ENV{COLUMNS}) {
+    $term_cols = $ENV{COLUMNS};
 }
-my $list_width = $term_cols - 4; # 4 is for the border width on either side
+$list_width = $term_cols - 4; # 4 is for the border width on either side
 
 my %options;
 if (eval "use Getopt::Long; 1") {
