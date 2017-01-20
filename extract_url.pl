@@ -297,7 +297,7 @@ my %closedurls;
 sub context_char_count
 {
     # 4 is for the border width on either side
-    return ($list_width - length(" =>URL<= "))/2;
+    return ($list_width - length(" <|URL|> "))/2;
 }
 
 sub process_sincelast
@@ -467,7 +467,7 @@ sub find_urls_rec
 					$last10words = &sublastwords($last10words, 50);
 					if ($seenstart == 1) {
 						if (! exists($closedurls{$seenurl})) {
-							my $mtext = "=>$skipped_text<=";
+							my $mtext = "<|$skipped_text|>";
 							if (length($beforetext)) {
 								my $space = " ";
 								$space = "" if ($beforetext =~ /[(-]$/);
