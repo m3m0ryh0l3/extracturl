@@ -1,3 +1,9 @@
+2017-01-23 Kyle Wheeler <kyle@memoryhole.net>
+        - 1.6.2 released.
+        - Fix bugs in 1.6.1 (more tolerant of dependency location failures)
+        - Change default ALTSELECT value from k to a (so as not to interfere
+          with vim-like behavior)
+
 2017-01-18 Kyle Wheeler <kyle@memoryhole.net>
 
         - 1.6.1 released.
