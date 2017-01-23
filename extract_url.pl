@@ -130,7 +130,7 @@ my $noreview = 0; # means don't display overly-long URLs to be checked before op
 my $persist  = 0; # means don't exit after viewing a URL (ignored if $shortcut == 0)
 my $ignore_empty = 0; # means to throw out URLs that don't have text in HTML
 my $default_view = "url"; # means what shows up in the list by default: urls or contexts
-my $alt_select_key = 'k';
+my $alt_select_key = 'a';
 my $sanitize_reserved = 1;
 sub read_extracturl_prefs
 {
@@ -624,8 +624,6 @@ if (&isOutputScreen) {
 }
 
 if ($fancymenu == 1) {
-	#use strict;
-
 	# This is the shortcut...
 	if ($shortcut == 1 && 1 == scalar keys %link_hash) {
 		my ($url) = each %link_hash;
@@ -649,7 +647,7 @@ if ($fancymenu == 1) {
 		-color_support => 1,
 		-clear_on_exit => 1
 	);
-	my $wrapwidth = $cui->width() - 2;
+	my $wrapwidth = $cui->width - 2;
 	my %listhash_url;
 	my %listhash_context;
 	my @listvals;
@@ -1011,7 +1009,7 @@ launched for the selected URL. This key will then make B<extract_url.pl>
 launch the URL viewer but will not quit. However, if I<PERSISTENT> is
 specified in the config file, the opposite is true: normal selection of
 a URL will launch the URL viewer and will not cause B<extract_url.pl> to
-exit, but this key will. This setting defaults to I<k>.
+exit, but this key will. This setting defaults to I<a>.
 
 =item DEFAULT_VIEW {url|context}
 
