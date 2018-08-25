@@ -887,9 +887,9 @@ come with Perl.
 
 Optional dependencies are B<URI::Find> (recognizes more exotic URL
 variations in plain text (without HTML tags)), B<Curses::UI> (allows it
-to fully replace I<urlview>), B<MIME::Quoted> (does a more standardized decode
-of quoted-printable characters in plain text), and B<Getopt::Long> (if present,
-B<extract_url.pl> recognizes long options --version and --list).
+to fully replace I<urlview>), B<MIME::QuotedPrint> (does a more standardized
+decode of quoted-printable characters in plain text), and B<Getopt::Long> (if
+present, B<extract_url.pl> recognizes long options --version and --list).
 
 =head1 EXAMPLES
 
